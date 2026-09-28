@@ -1,15 +1,15 @@
 import * as THREE from "three";
 
 export class CameraRig {
-  constructor({ aspect = 16 / 9, viewHeight = 9.5 } = {}) {
+  constructor({ aspect = 16 / 9, viewHeight = 7.8 } = {}) {
     this.viewHeight = viewHeight;
     this.camera = new THREE.OrthographicCamera();
     this.target = new THREE.Vector3();
     this.smoothedTarget = new THREE.Vector3();
     this.focus = new THREE.Vector3();
-    this.offset = new THREE.Vector3(8.5, 10.5, 8.5);
-    this.lookHeight = 0.88;
-    this.damping = 6.8;
+    this.offset = new THREE.Vector3(7.0, 8.6, 7.0);
+    this.lookHeight = 1.02;
+    this.damping = 7.6;
     this.pixelWorldSize = 0;
 
     const groundForward = new THREE.Vector2(this.offset.x, this.offset.z).normalize();
@@ -58,7 +58,7 @@ export class CameraRig {
       const z = this.focus.z;
       const u = x * this.groundRight.x + z * this.groundRight.y;
       const v = x * this.groundForward.x + z * this.groundForward.y;
-      const step = this.pixelWorldSize * 0.72;
+      const step = this.pixelWorldSize * 0.58;
       const su = Math.round(u / step) * step;
       const sv = Math.round(v / step) * step;
       this.focus.x = su * this.groundRight.x + sv * this.groundForward.x;

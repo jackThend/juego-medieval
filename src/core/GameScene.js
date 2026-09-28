@@ -7,9 +7,9 @@ function createSkyDome() {
     depthWrite: false,
     fog: false,
     uniforms: {
-      topColor: { value: new THREE.Color(0x202833) },
-      horizonColor: { value: new THREE.Color(0x4d4d3e) },
-      bottomColor: { value: new THREE.Color(0x262a22) },
+      topColor: { value: new THREE.Color(0x4a5575) },
+      horizonColor: { value: new THREE.Color(0x8a7458) },
+      bottomColor: { value: new THREE.Color(0x39382a) },
     },
     vertexShader: /* glsl */ `
       varying vec3 vWorldPosition;
@@ -49,11 +49,11 @@ function createSkyDome() {
 
 export function createGameScene() {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x242820);
-  scene.fog = new THREE.FogExp2(0x262b24, 0.036);
+  scene.background = new THREE.Color(0x34392d);
+  scene.fog = new THREE.FogExp2(0x41483d, 0.020);
   scene.add(createSkyDome());
 
-  const key = new THREE.DirectionalLight(0xffddb0, 3.35);
+  const key = new THREE.DirectionalLight(0xffddb0, 3.0);
   key.position.set(-8, 13, 7);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -67,14 +67,14 @@ export function createGameScene() {
   key.shadow.normalBias = 0.035;
   scene.add(key);
 
-  const fill = new THREE.HemisphereLight(0x8292a9, 0x59472f, 1.55);
+  const fill = new THREE.HemisphereLight(0xb6c1d0, 0x7d6648, 2.15);
   scene.add(fill);
 
-  const rim = new THREE.DirectionalLight(0x9fc7ff, 2.1);
+  const rim = new THREE.DirectionalLight(0xa8d0ff, 2.5);
   rim.position.set(9, 10, -12);
   scene.add(rim);
 
-  scene.add(new THREE.AmbientLight(0x354039, 0.14));
+  scene.add(new THREE.AmbientLight(0x4b5448, 0.24));
 
   return scene;
 }

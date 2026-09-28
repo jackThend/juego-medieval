@@ -96,6 +96,7 @@ export class Knight {
     this._mesh(new THREE.BoxGeometry(0.48, 0.12, 0.28), this.mat.armorDark, this.head, [0, -0.02, -0.22]);
     this._mesh(new THREE.BoxGeometry(0.07, 0.42, 0.36), this.mat.armorDark, this.head, [0, 0.05, -0.2]);
     this._mesh(new THREE.ConeGeometry(0.16, 0.38, 5), this.mat.armor, this.head, [0, 0.36, 0]);
+    this._mesh(new THREE.BoxGeometry(0.08, 0.44, 0.04), this.mat.cloth, this.head, [0, 0.48, -0.03], [0.22, 0, -0.02]);
 
     this.leftArm = new THREE.Group();
     this.rightArm = new THREE.Group();
@@ -109,6 +110,8 @@ export class Knight {
     this.shield.position.set(-0.08, -0.34, 0.05);
     this.leftArm.add(this.shield);
     this._mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.09, 8), this.mat.wood, this.shield, [0, 0, 0], [Math.PI / 2, 0, 0], [0.88, 1, 1.12]);
+    this._mesh(new THREE.BoxGeometry(0.06, 0.46, 0.04), this.mat.armor, this.shield, [0, 0, -0.05]);
+    this._mesh(new THREE.BoxGeometry(0.28, 0.06, 0.04), this.mat.armor, this.shield, [0, 0, -0.05]);
     this._mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.13, 8), this.mat.armor, this.shield, [0, 0, -0.04], [Math.PI / 2, 0, 0]);
 
     this.swordPivot = new THREE.Group();
@@ -134,7 +137,15 @@ export class Knight {
     this.cape.castShadow = true;
     this.model.add(this.cape);
 
-    this.model.scale.setScalar(0.9);
+    this.selectionRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.42, 0.56, 24),
+      new THREE.MeshBasicMaterial({ color: 0xf3dc8b, transparent: true, opacity: 0.65, depthWrite: false, toneMapped: false }),
+    );
+    this.selectionRing.rotation.x = -Math.PI / 2;
+    this.selectionRing.position.y = 0.035;
+    this.root.add(this.selectionRing);
+
+    this.model.scale.setScalar(1.02);
   }
 
   fixedUpdate(dt) {
@@ -299,6 +310,10 @@ export class Knight {
 
     // Parpadeo breve de invulnerabilidad, deliberadamente discreto para no romper la lectura.
     this.model.visible = !(this.invulnerabilityTime > 0 && Math.floor(time * 18) % 2 === 0 && this.hurtTime > 0);
+
+    const ringPulse = 1.0 + Math.sin(time * 3.4) * 0.03 + moveAmount * 0.04;
+    this.selectionRing.scale.setScalar(ringPulse);
+    this.selectionRing.material.opacity = this.dead ? 0.18 : (this.dashTime > 0 ? 0.92 : 0.68);
 
     if (moveAmount > 0.16 && this.grounded && this.dashTime <= 0 && !this.dead) {
       this.stepDistance += planarSpeed * dt;

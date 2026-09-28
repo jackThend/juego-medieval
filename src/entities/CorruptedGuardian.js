@@ -81,6 +81,8 @@ export class CorruptedGuardian {
     this._mesh(new THREE.CylinderGeometry(0.43, 0.54, 0.5, 5), this.mat.enemyCloth, this.torso, [0, -0.28, 0], [0, Math.PI / 5, 0]);
     this._mesh(new THREE.SphereGeometry(0.29, 6, 4), this.mat.enemyArmorDark, this.torso, [-0.5, 0.55, 0], [0, 0, 0], [1.15, 0.72, 1.0]);
     this._mesh(new THREE.SphereGeometry(0.29, 6, 4), this.mat.enemyArmorDark, this.torso, [0.5, 0.55, 0], [0, 0, 0], [1.15, 0.72, 1.0]);
+    this._mesh(new THREE.ConeGeometry(0.16, 0.46, 5), this.mat.enemyArmorDark, this.torso, [-0.75, 0.72, -0.02], [0, 0, -0.85]);
+    this._mesh(new THREE.ConeGeometry(0.16, 0.46, 5), this.mat.enemyArmorDark, this.torso, [0.75, 0.72, -0.02], [0, 0, 0.85]);
 
     this.head = new THREE.Group();
     this.head.position.set(0, 1.98, 0);
@@ -94,6 +96,7 @@ export class CorruptedGuardian {
     // Astas rotas, exageradas para una silueta de jefe legible a resolución baja.
     this._mesh(new THREE.ConeGeometry(0.1, 0.62, 5), this.mat.bone, this.head, [-0.23, 0.42, 0], [0, 0, 0.48]);
     this._mesh(new THREE.ConeGeometry(0.1, 0.48, 5), this.mat.bone, this.head, [0.24, 0.4, 0], [0, 0, -0.55]);
+    this._mesh(new THREE.BoxGeometry(0.18, 0.55, 0.18), this.mat.enemyGlow, this.head, [0, 0.62, 0.02], [0, 0, 0.16]);
 
     this.leftArm = new THREE.Group();
     this.rightArm = new THREE.Group();
@@ -121,7 +124,15 @@ export class CorruptedGuardian {
     this.cape.castShadow = true;
     this.model.add(this.cape);
 
-    this.model.scale.setScalar(0.98);
+    this.selectionRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.62, 0.82, 26),
+      new THREE.MeshBasicMaterial({ color: 0xff8c52, transparent: true, opacity: 0.62, depthWrite: false, toneMapped: false }),
+    );
+    this.selectionRing.rotation.x = -Math.PI / 2;
+    this.selectionRing.position.y = 0.04;
+    this.root.add(this.selectionRing);
+
+    this.model.scale.setScalar(1.08);
   }
 
   fixedUpdate(dt, playerPosition) {
@@ -248,6 +259,10 @@ export class CorruptedGuardian {
       this.rightArm.rotation.z = damp(this.rightArm.rotation.z, -0.08, 9, dt);
       this.torso.rotation.y = damp(this.torso.rotation.y, 0, 9, dt);
     }
+
+    const ringPulse = 1.0 + Math.sin(time * (this.phaseTwo ? 6.4 : 3.2)) * (this.phaseTwo ? 0.08 : 0.03);
+    this.selectionRing.scale.setScalar(ringPulse);
+    this.selectionRing.material.opacity = this.dead ? 0.0 : (this.phaseTwo ? 0.88 : 0.62);
 
     if (this.phaseTwo && !this.dead) {
       const pulse = 1 + Math.sin(time * 8.0) * 0.07;

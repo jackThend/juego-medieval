@@ -5,10 +5,12 @@ const PixelArtShader = {
   uniforms: {
     tDiffuse: { value: null },
     resolution: { value: new THREE.Vector2(640, 360) },
-    colorLevels: { value: 10.0 },
-    ditherStrength: { value: 0.9 },
-    edgeStrength: { value: 0.32 },
-    vignetteStrength: { value: 0.16 },
+    colorLevels: { value: 18.0 },
+    ditherStrength: { value: 0.22 },
+    edgeStrength: { value: 0.14 },
+    vignetteStrength: { value: 0.08 },
+    shadowLift: { value: 0.08 },
+    contrast: { value: 1.06 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -24,6 +26,8 @@ const PixelArtShader = {
     uniform float ditherStrength;
     uniform float edgeStrength;
     uniform float vignetteStrength;
+    uniform float shadowLift;
+    uniform float contrast;
     varying vec2 vUv;
 
     float luma(vec3 c) {
@@ -63,6 +67,10 @@ const PixelArtShader = {
     void main() {
       vec2 texel = 1.0 / resolution;
       vec3 c = texture2D(tDiffuse, vUv).rgb;
+      c = mix(c, sqrt(max(c, vec3(0.0))), 0.14);
+      c = (c - 0.5) * contrast + 0.5;
+      c += vec3(shadowLift);
+      c = clamp(c, 0.0, 1.0);
       float lc = luma(c);
       float ll = luma(texture2D(tDiffuse, vUv + vec2(-texel.x, 0.0)).rgb);
       float lr = luma(texture2D(tDiffuse, vUv + vec2( texel.x, 0.0)).rgb);
@@ -73,9 +81,11 @@ const PixelArtShader = {
       float edge = abs(lc - ll) + abs(lc - lr) + abs(lc - lu) + abs(lc - ld);
       edge = smoothstep(0.075, 0.38, edge);
 
-      // Posterización + dithering Bayer: también cuantiza las transiciones de sombra.
+      // Posterización con dithering reducido y dependiente de la sombra:
+      // mantiene la estética pixel-art sin llenar toda la pantalla de ruido.
       float threshold = bayer4(gl_FragCoord.xy) - 0.5;
-      vec3 dithered = clamp(c + threshold * (ditherStrength / colorLevels), 0.0, 1.0);
+      float ditherMask = smoothstep(0.95, 0.18, lc);
+      vec3 dithered = clamp(c + threshold * (ditherStrength / colorLevels) * ditherMask, 0.0, 1.0);
       vec3 quantized = floor(dithered * colorLevels + 0.5) / colorLevels;
       quantized *= 1.0 - edge * edgeStrength;
 

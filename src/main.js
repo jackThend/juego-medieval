@@ -20,7 +20,7 @@ async function boot() {
   const loading = document.querySelector("#loading");
 
   const scene = createGameScene();
-  const cameraRig = new CameraRig({ aspect: window.innerWidth / window.innerHeight, viewHeight: 9.3 });
+  const cameraRig = new CameraRig({ aspect: window.innerWidth / window.innerHeight, viewHeight: 7.8 });
   const physics = new PhysicsWorld();
   await physics.init();
 
@@ -69,7 +69,7 @@ async function boot() {
     scene,
     cameraRig,
     mount,
-    internalHeight: 360,
+    internalHeight: 432,
   });
 
   const startGame = async () => {

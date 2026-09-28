@@ -56,7 +56,7 @@ export class Engine {
     const aspect = displayW / displayH;
 
     // El mundo se rasteriza realmente a baja resolución; CSS sólo amplía píxeles ya existentes.
-    const h = Math.min(this.internalHeight, Math.max(240, Math.round(displayH * 0.46)));
+    const h = Math.min(this.internalHeight, Math.max(300, Math.round(displayH * 0.54)));
     const w = Math.max(320, Math.round(h * aspect));
 
     this.renderer.setSize(w, h, false);

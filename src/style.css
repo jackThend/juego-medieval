@@ -42,7 +42,7 @@ canvas {
   left: max(20px, env(safe-area-inset-left));
 }
 .hud__brand { font-size: clamp(12px, 1.25vw, 18px); font-weight: 900; }
-.hud__objective { margin-top: 7px; color: #cabb91; font-size: 10px; max-width: 370px; }
+.hud__objective { margin-top: 8px; color: #d5c59d; font-size: 12px; max-width: 420px; line-height: 1.35; }
 
 .player-status {
   position: absolute;
@@ -50,10 +50,10 @@ canvas {
   bottom: max(52px, calc(env(safe-area-inset-bottom) + 18px));
   width: min(240px, 43vw);
 }
-.bar-label { margin-bottom: 5px; color: #d7caa8; font-size: 9px; }
+.bar-label { margin-bottom: 6px; color: #e0d2ae; font-size: 11px; }
 .pixel-bar {
   position: relative;
-  height: 10px;
+  height: 12px;
   border: 2px solid rgba(237,228,201,.74);
   background: rgba(14,16,12,.78);
   box-shadow: 0 0 0 2px rgba(0,0,0,.42), inset 0 0 0 1px rgba(0,0,0,.55);
@@ -84,7 +84,7 @@ canvas {
   transform: translateX(-50%);
   transition: opacity .35s ease;
 }
-.enemy-status__name { margin-bottom: 7px; text-align: center; color: #d8b991; font-size: 10px; }
+.enemy-status__name { margin-bottom: 8px; text-align: center; color: #e3c395; font-size: 12px; }
 
 .hud__controls {
   position: absolute;
@@ -94,8 +94,8 @@ canvas {
   flex-wrap: wrap;
   gap: 7px 14px;
   max-width: min(92vw, 760px);
-  color: #aaa18d;
-  font-size: 9px;
+  color: #c0b39a;
+  font-size: 11px;
 }
 .hud__controls b { color: #f1dcad; }
 
@@ -108,7 +108,7 @@ canvas {
   border: 1px solid rgba(224,205,154,.25);
   background: rgba(14,16,12,.72);
   color: #f0ddb0;
-  font-size: 10px;
+  font-size: 12px;
   opacity: 0;
   transition: opacity .18s ease, transform .18s ease;
 }
@@ -122,8 +122,9 @@ canvas {
   place-items: center;
   padding: 24px;
   background:
-    radial-gradient(circle at 50% 45%, rgba(104,93,61,.08), transparent 36%),
-    linear-gradient(180deg, rgba(10,12,9,.38), rgba(8,10,8,.76));
+    radial-gradient(circle at 50% 40%, rgba(139,112,71,.13), transparent 34%),
+    radial-gradient(circle at 50% 60%, rgba(66,90,134,.08), transparent 42%),
+    linear-gradient(180deg, rgba(10,12,9,.32), rgba(8,10,8,.80));
   backdrop-filter: blur(1px);
   transition: opacity .65s ease, visibility .65s ease;
 }
@@ -139,10 +140,10 @@ canvas {
   mix-blend-mode: overlay;
 }
 .start-screen__panel { position: relative; width: min(540px, 92vw); text-align: center; }
-.start-screen__eyebrow { color: #bca77a; font-size: 9px; letter-spacing: .28em; }
+.start-screen__eyebrow { color: #bca77a; font-size: 11px; letter-spacing: .28em; }
 .start-screen h1 {
   margin: 16px 0 18px;
-  color: #eee2c5;
+  color: #f2e4c4;
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(48px, 9vw, 102px);
   line-height: .78;
@@ -163,14 +164,14 @@ canvas {
   background: rgba(24,27,20,.72);
   color: #f0deb4;
   letter-spacing: .15em;
-  font-size: 10px;
+  font-size: 12px;
   cursor: pointer;
   box-shadow: 0 5px 0 rgba(0,0,0,.48);
   transition: transform .12s ease, background .12s ease;
 }
 #start-button:hover { background: rgba(70,61,42,.72); transform: translateY(-1px); }
 #start-button:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,.48); }
-.start-screen__hint { margin-top: 13px; color: #756f61; font-size: 8px; letter-spacing: .1em; }
+.start-screen__hint { margin-top: 13px; color: #8a8273; font-size: 10px; letter-spacing: .1em; }
 
 .message-overlay {
   position: absolute;
@@ -192,7 +193,7 @@ canvas {
   letter-spacing: .04em;
   text-shadow: 0 4px 0 rgba(0,0,0,.9);
 }
-.message-overlay__body { margin-top: 10px; color: #b6aa90; font-size: 10px; }
+.message-overlay__body { margin-top: 10px; color: #c5b89a; font-size: 12px; }
 
 #loading {
   position: absolute;
@@ -204,7 +205,7 @@ canvas {
   border: 1px solid rgba(235,218,175,.2);
   background: rgba(15,17,13,.82);
   color: #d8ccb0;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: .08em;
   pointer-events: none;
   transition: opacity .35s ease;

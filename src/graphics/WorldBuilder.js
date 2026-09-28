@@ -34,7 +34,10 @@ export class WorldBuilder {
   build() {
     this._ground();
     this._paths();
+    this._arena();
     this._ruins();
+    this._processionalMarkers();
+    this._sanctumBackdrop();
     this._rubble();
     this._grass();
     this._graveyard();
@@ -67,18 +70,68 @@ export class WorldBuilder {
   }
 
   _paths() {
-    const pathGeo = new THREE.BoxGeometry(4.2, 0.06, 22);
+    const pathGeo = new THREE.BoxGeometry(5.8, 0.06, 23);
     const path = new THREE.Mesh(pathGeo, this.mat.path);
-    path.position.set(0, 0.025, 1.7);
+    path.position.set(0, 0.025, 1.2);
     path.rotation.y = Math.PI * 0.04;
     path.receiveShadow = true;
     this.scene.add(path);
 
-    const cross = new THREE.Mesh(new THREE.BoxGeometry(14, 0.055, 3.5), this.mat.path);
-    cross.position.set(-1.8, 0.03, -4.4);
+    const cross = new THREE.Mesh(new THREE.BoxGeometry(16, 0.055, 4.2), this.mat.path);
+    cross.position.set(-1.0, 0.03, -4.9);
     cross.rotation.y = -Math.PI * 0.06;
     cross.receiveShadow = true;
     this.scene.add(cross);
+  }
+
+
+  _arena() {
+    const arena = new THREE.Group();
+    arena.position.set(0, 0.04, -5.6);
+
+    const disk = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.9, 0.14, 8), this.mat.darkStone);
+    disk.position.y = 0.02;
+    disk.castShadow = true;
+    disk.receiveShadow = true;
+    arena.add(disk);
+
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(3.25, 0.18, 6, 18), this.mat.stone);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 0.09;
+    ring.castShadow = true;
+    ring.receiveShadow = true;
+    arena.add(ring);
+
+    const dummy = new THREE.Object3D();
+    const pavers = new THREE.InstancedMesh(new THREE.BoxGeometry(0.82, 0.08, 0.34), this.mat.path, 12);
+    for (let i = 0; i < 12; i += 1) {
+      const a = (i / 12) * Math.PI * 2;
+      dummy.position.set(Math.cos(a) * 2.2, 0.1, Math.sin(a) * 2.2);
+      dummy.rotation.set(0, -a + Math.PI * 0.5, 0);
+      dummy.scale.setScalar(0.95 + this.random() * 0.12);
+      dummy.updateMatrix();
+      pavers.setMatrixAt(i, dummy.matrix);
+    }
+    pavers.castShadow = true;
+    pavers.receiveShadow = true;
+    pavers.instanceMatrix.needsUpdate = true;
+    arena.add(pavers);
+
+    for (const [x, z, s] of [[-2.7, -1.5, 0.8], [2.8, -1.4, 0.95], [-2.4, 1.7, 0.72], [2.55, 1.6, 0.88]]) {
+      const obelisk = new THREE.Group();
+      const plinth = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.22, 0.58), this.mat.darkStone);
+      plinth.position.y = 0.11;
+      const shard = new THREE.Mesh(new THREE.BoxGeometry(0.32, 1.15 * s, 0.32), this.mat.stone);
+      shard.position.y = 0.68 * s;
+      shard.rotation.z = (this.random() - 0.5) * 0.24;
+      obelisk.add(plinth, shard);
+      obelisk.position.set(x, 0, z);
+      obelisk.rotation.y = this.random() * Math.PI;
+      shadowify(obelisk);
+      arena.add(obelisk);
+    }
+
+    this.scene.add(arena);
   }
 
   _createWall({ x, z, width, rows = 5, yaw = 0, missing = 0.18 }) {
@@ -206,8 +259,120 @@ export class WorldBuilder {
     this._createColumn(9.1, -6.7, 3.8, false);
   }
 
+  _processionalMarkers() {
+    const markers = [
+      [-2.7, 2.1, 0.16], [2.7, 2.1, -0.16],
+      [-2.5, -1.3, 0.1], [2.5, -1.3, -0.1],
+      [-2.3, -8.8, 0.08], [2.3, -8.8, -0.08],
+    ];
+
+    markers.forEach(([x, z, yaw], index) => {
+      const group = new THREE.Group();
+      const base = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.32, 0.55), this.mat.darkStone);
+      base.position.y = 0.16;
+      const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.45, 0.28), this.mat.stone);
+      shaft.position.y = 1.02;
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 0.5), this.mat.stone);
+      cap.position.y = 1.78;
+      const brazier = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.16, 6), this.mat.armorDark);
+      brazier.position.y = 1.96;
+      const ember = new THREE.Mesh(new THREE.OctahedronGeometry(0.11, 0), this.mat.ember);
+      ember.position.y = 2.08;
+      group.add(base, shaft, cap, brazier, ember);
+      group.position.set(x, 0, z);
+      group.rotation.y = yaw;
+      shadowify(group);
+      this.scene.add(group);
+
+      const light = new THREE.PointLight(0xff8e42, 2.8, 3.2, 2.2);
+      light.position.set(x, 2.05, z);
+      this.scene.add(light);
+
+      this.animated.push((time) => {
+        const pulse = 0.92 + Math.sin(time * 7.4 + index * 1.13) * 0.08;
+        ember.scale.setScalar(pulse);
+        light.intensity = 2.3 + Math.sin(time * 8.0 + index) * 0.45;
+      });
+    });
+  }
+
+  _sanctumBackdrop() {
+    const facade = new THREE.Group();
+    facade.position.set(0, 0, -13.1);
+
+    const wings = [
+      [-4.1, 1.8, 2.8, 4.2, 0.9],
+      [4.1, 1.8, 2.8, 4.2, 0.9],
+    ];
+    for (const [x, y, w, h, d] of wings) {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), this.mat.darkStone);
+      wall.position.set(x, y, 0);
+      wall.castShadow = true;
+      wall.receiveShadow = true;
+      facade.add(wall);
+    }
+
+    const centerLeft = new THREE.Mesh(new THREE.BoxGeometry(1.0, 4.8, 0.95), this.mat.stone);
+    const centerRight = new THREE.Mesh(new THREE.BoxGeometry(1.0, 4.8, 0.95), this.mat.stone);
+    centerLeft.position.set(-1.55, 2.2, 0);
+    centerRight.position.set(1.55, 2.2, 0);
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(4.9, 0.72, 1.0), this.mat.stone);
+    lintel.position.set(0, 4.45, 0);
+    facade.add(centerLeft, centerRight, lintel);
+
+    const roseOuter = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 0.82, 0.22, 12), this.mat.stone);
+    roseOuter.rotation.x = Math.PI / 2;
+    roseOuter.position.set(0, 3.05, 0.48);
+    const roseInner = new THREE.Mesh(new THREE.CylinderGeometry(0.54, 0.54, 0.12, 8), this.mat.moonGlass);
+    roseInner.rotation.x = Math.PI / 2;
+    roseInner.position.set(0, 3.05, 0.56);
+    facade.add(roseOuter, roseInner);
+
+    const brokenArch = new THREE.Mesh(new THREE.TorusGeometry(1.55, 0.14, 6, 18, Math.PI), this.mat.stone);
+    brokenArch.rotation.z = Math.PI;
+    brokenArch.position.set(0, 2.35, 0.45);
+    facade.add(brokenArch);
+
+    const bannerShape = new THREE.BufferGeometry();
+    bannerShape.setAttribute('position', new THREE.Float32BufferAttribute([
+      -0.30, 0.0, 0.0,
+       0.30, 0.0, 0.0,
+       0.22,-1.75, 0.06,
+      -0.30, 0.0, 0.0,
+       0.22,-1.75, 0.06,
+      -0.14,-1.92,-0.02,
+    ], 3));
+    bannerShape.computeVertexNormals();
+
+    const bannerLeft = new THREE.Mesh(bannerShape, this.mat.bannerBlue);
+    bannerLeft.position.set(-2.65, 3.8, 0.48);
+    const bannerRight = new THREE.Mesh(bannerShape, this.mat.bannerRed);
+    bannerRight.position.set(2.65, 3.8, 0.48);
+    facade.add(bannerLeft, bannerRight);
+
+    const candlePositions = [-1.2, -0.55, 0.55, 1.2];
+    candlePositions.forEach((x, index) => {
+      const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.44, 6), this.mat.wax);
+      candle.position.set(x, 1.07, 1.04);
+      facade.add(candle);
+      const flame = new THREE.Mesh(new THREE.OctahedronGeometry(0.07, 0), this.mat.ember);
+      flame.position.set(x, 1.34, 1.04);
+      facade.add(flame);
+      const light = new THREE.PointLight(0xffb05a, 1.3, 2.1, 2.1);
+      light.position.set(x, 1.35, 1.04);
+      facade.add(light);
+      this.animated.push((time) => {
+        flame.scale.setScalar(0.95 + Math.sin(time * 8.2 + index) * 0.08);
+        light.intensity = 1.0 + Math.sin(time * 9.3 + index * 1.7) * 0.18;
+      });
+    });
+
+    shadowify(facade);
+    this.scene.add(facade);
+  }
+
   _rubble() {
-    const count = 190;
+    const count = 96;
     const geo = new THREE.DodecahedronGeometry(0.18, 0);
     const rubble = new THREE.InstancedMesh(geo, this.mat.darkStone, count);
     const dummy = new THREE.Object3D();
@@ -231,7 +396,7 @@ export class WorldBuilder {
   }
 
   _grass() {
-    const count = 340;
+    const count = 210;
     const geo = new THREE.ConeGeometry(0.11, 0.45, 4);
     const grass = new THREE.InstancedMesh(geo, this.mat.grass, count);
     const dry = new THREE.InstancedMesh(geo, this.mat.grassDry, Math.floor(count * 0.35));
@@ -264,7 +429,7 @@ export class WorldBuilder {
   }
 
   _graveyard() {
-    const count = 28;
+    const count = 20;
     const headstoneGeo = new THREE.BoxGeometry(0.48, 0.78, 0.18);
     const headstones = new THREE.InstancedMesh(headstoneGeo, this.mat.darkStone, count);
     const dummy = new THREE.Object3D();
@@ -460,7 +625,7 @@ export class WorldBuilder {
   }
 
   _mistWisps() {
-    const count = 52;
+    const count = 28;
     const positions = new Float32Array(count * 3);
     const phases = new Float32Array(count);
     for (let i = 0; i < count; i += 1) {
