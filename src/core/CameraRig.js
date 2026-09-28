@@ -1,15 +1,15 @@
 import * as THREE from "three";
 
 export class CameraRig {
-  constructor({ aspect = 16 / 9, viewHeight = 7.8 } = {}) {
+  constructor({ aspect = 16 / 9, viewHeight = 7.0 } = {}) {
     this.viewHeight = viewHeight;
     this.camera = new THREE.OrthographicCamera();
     this.target = new THREE.Vector3();
     this.smoothedTarget = new THREE.Vector3();
     this.focus = new THREE.Vector3();
-    this.offset = new THREE.Vector3(7.0, 8.6, 7.0);
-    this.lookHeight = 1.02;
-    this.damping = 7.6;
+    this.offset = new THREE.Vector3(6.5, 8.0, 6.5);
+    this.lookHeight = 1.04;
+    this.damping = 8.0;
     this.pixelWorldSize = 0;
 
     const groundForward = new THREE.Vector2(this.offset.x, this.offset.z).normalize();
@@ -51,8 +51,6 @@ export class CameraRig {
     this.focus.copy(this.smoothedTarget);
     this.focus.y += this.lookHeight;
 
-    // Pixel snapping en el plano del suelo: reduce el shimmer sub-píxel típico
-    // de cámaras ortográficas que siguen suavemente un objetivo.
     if (this.pixelWorldSize > 0) {
       const x = this.focus.x;
       const z = this.focus.z;
