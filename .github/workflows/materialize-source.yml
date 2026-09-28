@@ -1,0 +1,60 @@
+name: Materialize source tree
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "materialize-source"
+  cancel-in-progress: true
+
+jobs:
+  materialize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Materialize project source
+        shell: bash
+        run: |
+          if [ -f package.json ]; then
+            echo "Source tree already materialized."
+            exit 0
+          fi
+
+          cat \
+            source-parts/part00.b64 \
+            source-parts/part01.b64 \
+            source-parts/part02.b64 \
+            source-parts/fix03a0.b64 \
+            source-parts/fix03a1.b64 \
+            source-parts/fix03a2.b64 \
+            source-parts/fix03b.b64 \
+            source-parts/fix03c.b64 \
+            source-parts/fix03d.b64 \
+            source-parts/part04.b64 \
+            source-parts/part05.b64 \
+            source-parts/part06.b64 > source.tar.gz.b64
+
+          test "$(wc -c < source.tar.gz.b64)" -eq 39584
+          base64 --decode source.tar.gz.b64 > source.tar.gz
+          echo "5ac1edb112ce3fc5efff7cc26ee0d87ea779b0f9245e888f30e4de76c4615a04  source.tar.gz" | sha256sum -c -
+
+          mkdir unpacked
+          tar -xzf source.tar.gz -C unpacked
+
+          cp unpacked/package.json unpacked/index.html unpacked/vite.config.js .
+          cp -R unpacked/src unpacked/scripts .
+          rm -rf source-parts source.tar.gz source.tar.gz.b64 unpacked
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Materialize Ruinas del Ocaso source tree"
+          git push
