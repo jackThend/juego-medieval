@@ -1,0 +1,41 @@
+name: Apply iteration 7
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".iter7/**"
+      - ".github/workflows/apply-iteration7.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "apply-iteration7"
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify and apply source
+        shell: bash
+        run: |
+          echo "0beba4a6d9bfea709c15d691a28d9c139ffacc2702e83ab50d8b52088b912f8c  .iter7/source.tar.gz" | sha256sum -c -
+          tar -xzf .iter7/source.tar.gz
+          rm -rf .iter7
+          rm -f .github/workflows/apply-iteration7.yml
+
+      - name: Commit iteration 7
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Apply Ruinas del Ocaso iteration 7"
+          git push
