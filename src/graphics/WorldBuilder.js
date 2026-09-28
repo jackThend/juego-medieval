@@ -1,0 +1,511 @@
+import * as THREE from "three";
+import { createRuneTexture } from "./ProceduralTextures.js";
+
+function seededRandom(seed = 12345) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+function shadowify(object) {
+  object.traverse?.((child) => {
+    if (child.isMesh || child.isInstancedMesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+  return object;
+}
+
+export class WorldBuilder {
+  constructor(scene, physics, materials) {
+    this.scene = scene;
+    this.physics = physics;
+    this.mat = materials;
+    this.random = seededRandom(0x0ca5cad0);
+    this.animated = [];
+    this.deltaTime = 0;
+    this.shrine = null;
+    this.shrinePosition = new THREE.Vector3(0, 0, -10.5);
+  }
+
+  build() {
+    this._ground();
+    this._paths();
+    this._ruins();
+    this._rubble();
+    this._grass();
+    this._graveyard();
+    this._deadTrees();
+    this._braziers();
+    this._shrine();
+    this._embers();
+    this._mistWisps();
+  }
+
+  _ground() {
+    const ground = new THREE.Mesh(new THREE.BoxGeometry(34, 0.5, 34), this.mat.ground);
+    ground.position.y = -0.25;
+    ground.receiveShadow = true;
+    this.scene.add(ground);
+    this.physics.createGround({ y: -0.25, halfExtents: { x: 17, y: 0.25, z: 17 } });
+
+    // Límites físicos invisibles: mantienen al jugador dentro del diorama sin ensuciar la composición.
+    const edge = 16.75;
+    this.physics.createStaticBox({ x: -edge, y: 0.8, z: 0, hx: 0.25, hy: 0.8, hz: edge });
+    this.physics.createStaticBox({ x: edge, y: 0.8, z: 0, hx: 0.25, hy: 0.8, hz: edge });
+    this.physics.createStaticBox({ x: 0, y: 0.8, z: -edge, hx: edge, hy: 0.8, hz: 0.25 });
+    this.physics.createStaticBox({ x: 0, y: 0.8, z: edge, hx: edge, hy: 0.8, hz: 0.25 });
+
+    // Borde inferior visible del diorama, más oscuro, para que parezca una maqueta flotante.
+    const under = new THREE.Mesh(new THREE.BoxGeometry(34.2, 1.2, 34.2), this.mat.darkStone);
+    under.position.y = -0.9;
+    under.receiveShadow = true;
+    this.scene.add(under);
+  }
+
+  _paths() {
+    const pathGeo = new THREE.BoxGeometry(4.2, 0.06, 22);
+    const path = new THREE.Mesh(pathGeo, this.mat.path);
+    path.position.set(0, 0.025, 1.7);
+    path.rotation.y = Math.PI * 0.04;
+    path.receiveShadow = true;
+    this.scene.add(path);
+
+    const cross = new THREE.Mesh(new THREE.BoxGeometry(14, 0.055, 3.5), this.mat.path);
+    cross.position.set(-1.8, 0.03, -4.4);
+    cross.rotation.y = -Math.PI * 0.06;
+    cross.receiveShadow = true;
+    this.scene.add(cross);
+  }
+
+  _createWall({ x, z, width, rows = 5, yaw = 0, missing = 0.18 }) {
+    const blockW = 0.92;
+    const blockH = 0.43;
+    const blockD = 0.52;
+    const columns = Math.max(2, Math.round(width / blockW));
+    const transforms = [];
+
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < columns; col += 1) {
+        const edgeDamage = row >= rows - 2 ? missing * 1.8 : missing;
+        if (this.random() < edgeDamage) continue;
+        const px = (col - (columns - 1) * 0.5) * blockW + ((row % 2) * blockW * 0.5 - blockW * 0.25);
+        const py = blockH * 0.5 + row * blockH;
+        transforms.push({
+          x: px + (this.random() - 0.5) * 0.06,
+          y: py + (this.random() - 0.5) * 0.035,
+          z: (this.random() - 0.5) * 0.04,
+          ry: (this.random() - 0.5) * 0.045,
+          s: 0.95 + this.random() * 0.09,
+        });
+      }
+    }
+
+    const geometry = new THREE.BoxGeometry(blockW * 0.96, blockH * 0.92, blockD);
+    const mesh = new THREE.InstancedMesh(geometry, this.mat.stone, transforms.length);
+    const dummy = new THREE.Object3D();
+    transforms.forEach((t, i) => {
+      dummy.position.set(t.x, t.y, t.z);
+      dummy.rotation.set(0, t.ry, 0);
+      dummy.scale.set(t.s, t.s, t.s);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.position.set(x, 0, z);
+    mesh.rotation.y = yaw;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    this.scene.add(mesh);
+
+    // Collider simplificado: visualmente hay huecos, pero el volumen principal sigue siendo muro.
+    this.physics.createStaticBox({
+      x,
+      y: (rows * blockH) * 0.5,
+      z,
+      hx: width * 0.5,
+      hy: rows * blockH * 0.5,
+      hz: blockD * 0.48,
+      rotationY: yaw,
+    });
+  }
+
+  _createArch({ x, z, yaw = 0 }) {
+    const group = new THREE.Group();
+    group.position.set(x, 0, z);
+    group.rotation.y = yaw;
+
+    const sideGeo = new THREE.BoxGeometry(0.72, 2.45, 0.68);
+    const left = new THREE.Mesh(sideGeo, this.mat.stone);
+    const right = new THREE.Mesh(sideGeo, this.mat.stone);
+    left.position.set(-1.2, 1.225, 0);
+    right.position.set(1.2, 1.225, 0);
+    group.add(left, right);
+
+    // Dovelas del arco aproximadas con bloques instanciados sobre media circunferencia.
+    const wedgeGeo = new THREE.BoxGeometry(0.54, 0.5, 0.72);
+    const arch = new THREE.InstancedMesh(wedgeGeo, this.mat.stone, 9);
+    const dummy = new THREE.Object3D();
+    for (let i = 0; i < 9; i += 1) {
+      const t = Math.PI - (i / 8) * Math.PI;
+      const radius = 1.18;
+      dummy.position.set(Math.cos(t) * radius, 2.45 + Math.sin(t) * radius, 0);
+      dummy.rotation.set(0, 0, t - Math.PI / 2);
+      dummy.scale.setScalar(0.96 + this.random() * 0.08);
+      dummy.updateMatrix();
+      arch.setMatrixAt(i, dummy.matrix);
+    }
+    arch.instanceMatrix.needsUpdate = true;
+    group.add(arch);
+    shadowify(group);
+    this.scene.add(group);
+
+    // Dos pilares físicos; el arco queda transitable por debajo.
+    const c = Math.cos(yaw);
+    const s = Math.sin(yaw);
+    for (const lx of [-1.2, 1.2]) {
+      const wx = x + lx * c;
+      const wz = z - lx * s;
+      this.physics.createStaticBox({ x: wx, y: 1.22, z: wz, hx: 0.36, hy: 1.22, hz: 0.34, rotationY: yaw });
+    }
+  }
+
+  _createColumn(x, z, height = 2.8, broken = false) {
+    const group = new THREE.Group();
+    const shaftHeight = broken ? height * 0.62 : height;
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.58, 0.24, 8), this.mat.stone);
+    base.position.y = 0.12;
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.38, shaftHeight, 10), this.mat.stone);
+    shaft.position.y = 0.24 + shaftHeight * 0.5;
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.4, 0.22, 8), this.mat.stone);
+    cap.position.y = 0.24 + shaftHeight + 0.1;
+    cap.rotation.z = broken ? 0.08 : 0;
+    group.add(base, shaft, cap);
+    group.position.set(x, 0, z);
+    shadowify(group);
+    this.scene.add(group);
+    this.physics.createStaticBox({ x, y: shaftHeight * 0.5, z, hx: 0.38, hy: shaftHeight * 0.5, hz: 0.38 });
+  }
+
+  _ruins() {
+    this._createWall({ x: -6.2, z: -4.8, width: 7.4, rows: 5, yaw: 0.05, missing: 0.2 });
+    this._createWall({ x: 6.5, z: -4.1, width: 6.4, rows: 6, yaw: -0.08, missing: 0.22 });
+    this._createWall({ x: -7.3, z: 4.2, width: 5.2, rows: 4, yaw: Math.PI * 0.48, missing: 0.24 });
+    this._createWall({ x: 7.8, z: 5.0, width: 6.2, rows: 4, yaw: Math.PI * 0.52, missing: 0.3 });
+    this._createWall({ x: -1.9, z: 9.8, width: 5.5, rows: 3, yaw: -0.12, missing: 0.34 });
+
+    this._createArch({ x: -2.5, z: -4.35, yaw: 0.02 });
+    this._createArch({ x: 4.7, z: 5.8, yaw: Math.PI * 0.52 });
+
+    this._createColumn(-8.6, -0.8, 3.4, false);
+    this._createColumn(-5.0, -0.9, 3.1, true);
+    this._createColumn(6.0, 1.3, 3.2, true);
+    this._createColumn(9.1, -6.7, 3.8, false);
+  }
+
+  _rubble() {
+    const count = 190;
+    const geo = new THREE.DodecahedronGeometry(0.18, 0);
+    const rubble = new THREE.InstancedMesh(geo, this.mat.darkStone, count);
+    const dummy = new THREE.Object3D();
+
+    for (let i = 0; i < count; i += 1) {
+      // Concentramos escombros cerca de los bordes del camino para conservar legibilidad jugable.
+      const side = this.random() < 0.5 ? -1 : 1;
+      const x = side * (3.2 + this.random() * 10.5) + (this.random() - 0.5) * 2.3;
+      const z = -10 + this.random() * 21;
+      const scale = 0.35 + this.random() * 1.5;
+      dummy.position.set(x, 0.08 + scale * 0.08, z);
+      dummy.rotation.set(this.random() * Math.PI, this.random() * Math.PI, this.random() * Math.PI);
+      dummy.scale.set(scale * 1.4, scale * 0.65, scale);
+      dummy.updateMatrix();
+      rubble.setMatrixAt(i, dummy.matrix);
+    }
+    rubble.castShadow = true;
+    rubble.receiveShadow = true;
+    rubble.instanceMatrix.needsUpdate = true;
+    this.scene.add(rubble);
+  }
+
+  _grass() {
+    const count = 340;
+    const geo = new THREE.ConeGeometry(0.11, 0.45, 4);
+    const grass = new THREE.InstancedMesh(geo, this.mat.grass, count);
+    const dry = new THREE.InstancedMesh(geo, this.mat.grassDry, Math.floor(count * 0.35));
+    const dummy = new THREE.Object3D();
+
+    const scatter = (mesh, amount, seedShift = 0) => {
+      for (let i = 0; i < amount; i += 1) {
+        const x = -15.5 + this.random() * 31;
+        const z = -15.5 + this.random() * 31;
+        const avoidPath = Math.abs(x) < 2.5 && z > -10 && z < 13;
+        if (avoidPath) {
+          i -= 1;
+          continue;
+        }
+        const s = 0.5 + this.random() * 1.45 + seedShift;
+        dummy.position.set(x, 0.2, z);
+        dummy.rotation.set((this.random() - 0.5) * 0.25, this.random() * Math.PI, (this.random() - 0.5) * 0.25);
+        dummy.scale.set(0.65 * s, s, 0.65 * s);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+      }
+      mesh.castShadow = true;
+      mesh.receiveShadow = false;
+      mesh.instanceMatrix.needsUpdate = true;
+      this.scene.add(mesh);
+    };
+
+    scatter(grass, count, 0);
+    scatter(dry, dry.count, -0.05);
+  }
+
+  _graveyard() {
+    const count = 28;
+    const headstoneGeo = new THREE.BoxGeometry(0.48, 0.78, 0.18);
+    const headstones = new THREE.InstancedMesh(headstoneGeo, this.mat.darkStone, count);
+    const dummy = new THREE.Object3D();
+
+    for (let i = 0; i < count; i += 1) {
+      const row = Math.floor(i / 7);
+      const col = i % 7;
+      const x = -13.0 + col * 0.92 + (this.random() - 0.5) * 0.18;
+      const z = -2.8 + row * 1.05 + (this.random() - 0.5) * 0.2;
+      dummy.position.set(x, 0.38, z);
+      dummy.rotation.set(
+        (this.random() - 0.5) * 0.14,
+        -0.06 + (this.random() - 0.5) * 0.22,
+        (this.random() - 0.5) * 0.16,
+      );
+      dummy.scale.set(0.84 + this.random() * 0.25, 0.75 + this.random() * 0.48, 1);
+      dummy.updateMatrix();
+      headstones.setMatrixAt(i, dummy.matrix);
+    }
+
+    headstones.castShadow = true;
+    headstones.receiveShadow = true;
+    headstones.instanceMatrix.needsUpdate = true;
+    this.scene.add(headstones);
+
+    for (const [x, z, yaw] of [[-11.7, -4.0, 0.08], [-8.4, 1.4, -0.12]]) {
+      const cross = new THREE.Group();
+      const vertical = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.55, 0.2), this.mat.darkStone);
+      const horizontal = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.18, 0.2), this.mat.darkStone);
+      vertical.position.y = 0.78;
+      horizontal.position.y = 1.05;
+      cross.add(vertical, horizontal);
+      cross.position.set(x, 0, z);
+      cross.rotation.y = yaw;
+      shadowify(cross);
+      this.scene.add(cross);
+    }
+  }
+
+  _deadTrees() {
+    const positions = [
+      [-11.5, 8.8, 0.25],
+      [11.4, 9.1, -0.35],
+      [-12.6, -8.2, -0.2],
+    ];
+
+    positions.forEach(([x, z, lean]) => {
+      const group = new THREE.Group();
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.3, 3.7, 7), this.mat.wood);
+      trunk.position.y = 1.85;
+      trunk.rotation.z = lean;
+      group.add(trunk);
+
+      for (let i = 0; i < 4; i += 1) {
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.12, 1.6 - i * 0.12, 6), this.mat.wood);
+        branch.position.set((i % 2 ? -1 : 1) * 0.45, 2.4 + i * 0.28, (i - 1.5) * 0.22);
+        branch.rotation.z = (i % 2 ? 1 : -1) * (0.72 + i * 0.07);
+        branch.rotation.y = i * 0.8;
+        group.add(branch);
+      }
+      group.position.set(x, 0, z);
+      shadowify(group);
+      this.scene.add(group);
+    });
+  }
+
+  _braziers() {
+    const positions = [[-2.2, -8.0], [2.2, -8.0]];
+    positions.forEach(([x, z], index) => {
+      const group = new THREE.Group();
+      group.position.set(x, 0, z);
+
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.46, 0.34, 6), this.mat.darkStone);
+      base.position.y = 0.17;
+      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.28, 0.24, 8), this.mat.armorDark);
+      bowl.position.y = 0.62;
+      const ember = new THREE.Mesh(new THREE.OctahedronGeometry(0.22, 0), this.mat.ember);
+      ember.position.y = 0.78;
+      ember.scale.set(1.0, 0.72, 1.0);
+      group.add(base, bowl, ember);
+      shadowify(group);
+      this.scene.add(group);
+
+      const light = new THREE.PointLight(0xff7a2e, 4.2, 4.2, 2.2);
+      light.position.set(x, 1.0, z);
+      this.scene.add(light);
+
+      this.animated.push((time) => {
+        const pulse = 0.88 + Math.sin(time * 7.1 + index * 1.7) * 0.12;
+        ember.scale.set(1.0, 0.72 * pulse, 1.0);
+        light.intensity = 3.5 + Math.sin(time * 8.3 + index) * 0.65;
+      });
+    });
+  }
+
+  _shrine() {
+    const group = new THREE.Group();
+    group.position.set(0, 0, -10.5);
+
+    const steps = [
+      [3.8, 0.24, 3.2, 0.12],
+      [3.0, 0.22, 2.45, 0.35],
+      [2.2, 0.2, 1.75, 0.56],
+    ];
+    steps.forEach(([w, h, d, y]) => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), this.mat.darkStone);
+      mesh.position.y = y;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      group.add(mesh);
+    });
+
+    const altar = new THREE.Mesh(new THREE.BoxGeometry(1.25, 1.2, 0.8), this.mat.stone);
+    altar.position.y = 1.1;
+    group.add(altar);
+
+    const runeTexture = createRuneTexture(64);
+    const runeMat = new THREE.MeshBasicMaterial({
+      map: runeTexture,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false,
+    });
+    const rune = new THREE.Mesh(new THREE.PlaneGeometry(0.76, 0.76), runeMat);
+    rune.position.set(0, 1.25, 0.415);
+    group.add(rune);
+
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.045, 6, 24), this.mat.rune);
+    halo.position.set(0, 2.15, 0);
+    halo.rotation.x = Math.PI / 2;
+    group.add(halo);
+
+    const light = new THREE.PointLight(0xff9d43, 15, 8, 2);
+    light.position.set(0, 2.0, 0.5);
+    group.add(light);
+
+    shadowify(group);
+    this.scene.add(group);
+    this.physics.createStaticBox({ x: 0, y: 1.0, z: -10.5, hx: 1.05, hy: 1.0, hz: 0.8 });
+
+    this.shrine = { group, halo, rune, light, activated: false, activation: 0 };
+
+    this.animated.push((time) => {
+      const shrine = this.shrine;
+      shrine.activation += (shrine.activated ? 1 : 0) * this.deltaTime * 0.72;
+      shrine.activation = Math.min(1, shrine.activation);
+      const awakened = shrine.activation;
+
+      halo.rotation.z = time * (0.34 + awakened * 0.8);
+      halo.rotation.x = Math.PI / 2 + Math.sin(time * 0.8) * awakened * 0.08;
+      halo.position.y = 2.12 + Math.sin(time * (1.7 + awakened)) * (0.08 + awakened * 0.08);
+      rune.scale.setScalar(0.95 + Math.sin(time * 3.1) * 0.05 + awakened * 0.2);
+      light.intensity = 9 + Math.sin(time * 4.7) * 1.8 + Math.sin(time * 7.9) * 0.8 + awakened * 15;
+    });
+  }
+
+  _embers() {
+    const count = 70;
+    const positions = new Float32Array(count * 3);
+    const phases = new Float32Array(count);
+    for (let i = 0; i < count; i += 1) {
+      positions[i * 3 + 0] = (this.random() - 0.5) * 6;
+      positions[i * 3 + 1] = 0.4 + this.random() * 3.4;
+      positions[i * 3 + 2] = -10.5 + (this.random() - 0.5) * 5;
+      phases[i] = this.random() * Math.PI * 2;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    const mat = new THREE.PointsMaterial({
+      color: 0xffb650,
+      size: 0.08,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0.8,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      toneMapped: false,
+    });
+    const points = new THREE.Points(geo, mat);
+    this.scene.add(points);
+
+    this.animated.push((time) => {
+      const attr = geo.getAttribute("position");
+      for (let i = 0; i < count; i += 1) {
+        attr.array[i * 3 + 1] += 0.0025 + Math.sin(time * 0.8 + phases[i]) * 0.0006;
+        attr.array[i * 3 + 0] += Math.sin(time * 1.2 + phases[i]) * 0.0007;
+        if (attr.array[i * 3 + 1] > 4.0) attr.array[i * 3 + 1] = 0.35;
+      }
+      attr.needsUpdate = true;
+      mat.opacity = 0.68 + Math.sin(time * 2.4) * 0.12;
+    });
+  }
+
+  _mistWisps() {
+    const count = 52;
+    const positions = new Float32Array(count * 3);
+    const phases = new Float32Array(count);
+    for (let i = 0; i < count; i += 1) {
+      positions[i * 3 + 0] = -15 + this.random() * 30;
+      positions[i * 3 + 1] = 0.24 + this.random() * 0.65;
+      positions[i * 3 + 2] = -15 + this.random() * 30;
+      phases[i] = this.random() * Math.PI * 2;
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    const material = new THREE.PointsMaterial({
+      color: 0xa8b1a5,
+      size: 0.42,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0.12,
+      depthWrite: false,
+      blending: THREE.NormalBlending,
+      toneMapped: false,
+    });
+    const points = new THREE.Points(geometry, material);
+    this.scene.add(points);
+
+    this.animated.push((time) => {
+      const attr = geometry.getAttribute("position");
+      for (let i = 0; i < count; i += 1) {
+        attr.array[i * 3 + 0] += 0.002 + Math.sin(time * 0.23 + phases[i]) * 0.0012;
+        attr.array[i * 3 + 2] += Math.cos(time * 0.19 + phases[i]) * 0.0009;
+        if (attr.array[i * 3 + 0] > 16) attr.array[i * 3 + 0] = -16;
+      }
+      attr.needsUpdate = true;
+    });
+  }
+
+  getShrinePosition(target = new THREE.Vector3()) {
+    return target.copy(this.shrinePosition);
+  }
+
+  activateShrine() {
+    if (this.shrine) this.shrine.activated = true;
+  }
+
+  update(time, dt = 1 / 60) {
+    this.deltaTime = dt;
+    this.animated.forEach((fn) => fn(time));
+  }
+}
