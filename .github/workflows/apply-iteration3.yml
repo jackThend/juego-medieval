@@ -30,7 +30,11 @@ jobs:
           echo "38d0d53439f086dae7b7727f7051a8f521a9b75a63b2a75c0eecd4510cada091  update-iteration3/part01.b64" | sha256sum -c -
           echo "cc6de1ec0e82b60a617c3ac98b25c3a6aa5bad7cca0c937757e55dca40c7c4d3  update-iteration3/part02.b64" | sha256sum -c -
           echo "1c01e5eb265d69868802531bcdd6bdcf186e9589bd567cf0bea4769312b3b562  update-iteration3/part03.b64" | sha256sum -c -
-          echo "34650c3ae5620ef240ea4d27fa8f36a85cf98a2f7799aa40859ea4b0ca3781e8  update-iteration3/part04.b64" | sha256sum -c -
+          echo "a0f7330e85481d0393238dd5e22020a33300f3a6383cf63186a1fdffeff85602  update-iteration3/part04a0.b64" | sha256sum -c -
+          echo "379857324b37b09e6b3a5e3c3063ebd8f72d90137cc982529ef8d645351ccea3  update-iteration3/part04a1.b64" | sha256sum -c -
+          echo "bd74682bc34295f355aa4c03b6dd8222eddf8a8af9643b53157300136108162b  update-iteration3/part04a2.b64" | sha256sum -c -
+          echo "c42e57a24f7904e53db49eafa4e298a723fe20769c6bc40e2bb34fb1584acfa5  update-iteration3/part04a3.b64" | sha256sum -c -
+          echo "76c81f8a7bb2bfaadd1e0cab58477537eeb9c4f405178cacd08078d5c7f72c07  update-iteration3/part04a4.b64" | sha256sum -c -
           echo "8fcfd11069601099f8eecd7b6cf34edbb51493f1de0ba62e58c5f6e9853834bd  update-iteration3/part05.b64" | sha256sum -c -
           echo "81bf12e348bf6d0388fa49d8d0668255f3b5bfe6835ec8f66639bf50708cfc11  update-iteration3/part06.b64" | sha256sum -c -
           echo "99bbd7ec26d483630a0784237173d5a6f983820368f5cc8bdd49b24ec568358d  update-iteration3/part07.b64" | sha256sum -c -
@@ -38,7 +42,7 @@ jobs:
       - name: Reconstruct and apply iteration 3
         shell: bash
         run: |
-          cat update-iteration3/part*.b64 > iteration3-source.b64
+          cat             update-iteration3/part00.b64             update-iteration3/part01.b64             update-iteration3/part02.b64             update-iteration3/part03.b64             update-iteration3/part04a0.b64             update-iteration3/part04a1.b64             update-iteration3/part04a2.b64             update-iteration3/part04a3.b64             update-iteration3/part04a4.b64             update-iteration3/part05.b64             update-iteration3/part06.b64             update-iteration3/part07.b64 > iteration3-source.b64
           test "$(wc -c < iteration3-source.b64)" -eq 39248
           base64 --decode iteration3-source.b64 > iteration3-source.tar.gz
           echo "a577baf74bc7542031cf80eb44910244878dfcb1778ec276dc44eedf2f7a8a36  iteration3-source.tar.gz" | sha256sum -c -
