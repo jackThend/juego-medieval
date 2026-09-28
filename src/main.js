@@ -14,13 +14,14 @@ import { CombatSystem } from "./combat/CombatSystem.js";
 import { EffectSystem } from "./effects/EffectSystem.js";
 import { HUD } from "./ui/HUD.js";
 import { GameDirector } from "./game/GameDirector.js";
+import { ArtDirectionController } from "./graphics/ArtDirectionController.js";
 
 async function boot() {
   const mount = document.querySelector("#game-shell");
   const loading = document.querySelector("#loading");
 
   const scene = createGameScene();
-  const cameraRig = new CameraRig({ aspect: window.innerWidth / window.innerHeight, viewHeight: 7.8 });
+  const cameraRig = new CameraRig({ aspect: window.innerWidth / window.innerHeight, viewHeight: 7.0 });
   const physics = new PhysicsWorld();
   await physics.init();
 
@@ -69,8 +70,10 @@ async function boot() {
     scene,
     cameraRig,
     mount,
-    internalHeight: 432,
+    internalHeight: 420,
   });
+
+  const artDirection = new ArtDirectionController(scene, { enemy: guardian, world });
 
   const startGame = async () => {
     if (director.state !== "intro") return;
@@ -100,6 +103,7 @@ async function boot() {
       knight.updateVisuals(dt, elapsed);
       guardian.updateVisuals(dt, elapsed);
       cameraRig.update(knight.getPosition(playerPosition), dt);
+      artDirection.update(dt, playerPosition);
       effects.update(dt);
       world.update(elapsed, dt);
       director.update(dt, elapsed);
