@@ -26,8 +26,11 @@ jobs:
       - name: Verify and apply source
         shell: bash
         run: |
-          echo "0beba4a6d9bfea709c15d691a28d9c139ffacc2702e83ab50d8b52088b912f8c  .iter7/source.tar.gz" | sha256sum -c -
-          tar -xzf .iter7/source.tar.gz
+          cat .iter7/chunks/part*.b64 > .iter7/source.b64
+          test "$(wc -c < .iter7/source.b64)" -eq 47440
+          base64 --decode .iter7/source.b64 > .iter7/source-fixed.tar.gz
+          echo "0beba4a6d9bfea709c15d691a28d9c139ffacc2702e83ab50d8b52088b912f8c  .iter7/source-fixed.tar.gz" | sha256sum -c -
+          tar -xzf .iter7/source-fixed.tar.gz
           rm -rf .iter7
           rm -f .github/workflows/apply-iteration7.yml
 
