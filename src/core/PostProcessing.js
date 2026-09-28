@@ -13,28 +13,23 @@ export class PostProcessing {
     this.renderPass = new RenderPass(scene, camera);
     this.composer.addPass(this.renderPass);
 
-    // SSAO: da peso a los contactos sin necesidad de hornear mapas externos.
     this.ssaoPass = new SSAOPass(scene, camera, width, height);
-    this.ssaoPass.kernelRadius = 7;
+    this.ssaoPass.kernelRadius = 5;
     this.ssaoPass.minDistance = 0.004;
-    this.ssaoPass.maxDistance = 0.14;
+    this.ssaoPass.maxDistance = 0.11;
     this.composer.addPass(this.ssaoPass);
 
-    // Bloom discreto: sólo las superficies realmente emisivas deben respirar luz.
     this.bloomPass = new UnrealBloomPass(
       new THREE.Vector2(width, height),
-      0.46,
-      0.42,
-      0.80,
+      0.30,
+      0.28,
+      0.86,
     );
     this.composer.addPass(this.bloomPass);
 
-    // Convierte la iluminación continua en bandas de color con dithering Bayer.
-    // Al operar sobre la imagen completa, cuantiza también sombras, AO y niebla.
     this.pixelPass = new PixelArtPass(width, height);
     this.composer.addPass(this.pixelPass);
 
-    // El OutputPass conserva el tone mapping y la conversión al espacio de salida.
     this.outputPass = new OutputPass();
     this.composer.addPass(this.outputPass);
   }
