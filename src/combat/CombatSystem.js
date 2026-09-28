@@ -16,10 +16,11 @@ export class CombatSystem {
     this.enemy.getPosition(this.enemyPos);
 
     if (this.player.consumeAttackStrike() && !this.enemy.dead) {
+      this.player.getFacing(this.facing);
+      this.effects.slash(this.playerPos, this.facing, false);
       this.dir.copy(this.enemyPos).sub(this.playerPos);
       const distance = this.dir.length();
       if (distance > 0.001) this.dir.multiplyScalar(1 / distance);
-      this.player.getFacing(this.facing);
       const alignment = this.facing.dot(this.dir);
       if (distance <= 1.85 && alignment >= 0.15) {
         if (this.enemy.takeDamage(34, this.dir)) {
@@ -31,10 +32,11 @@ export class CombatSystem {
     }
 
     if (this.enemy.consumeAttackStrike() && !this.player.dead) {
+      this.enemy.getFacing(this.facing);
+      this.effects.slash(this.enemyPos, this.facing, true);
       this.dir.copy(this.playerPos).sub(this.enemyPos);
       const distance = this.dir.length();
       if (distance > 0.001) this.dir.multiplyScalar(1 / distance);
-      this.enemy.getFacing(this.facing);
       const alignment = this.facing.dot(this.dir);
       if (distance <= 1.75 && alignment >= -0.05) {
         if (this.player.receiveDamage(this.enemy.phaseTwo ? 28 : 23, this.dir)) {

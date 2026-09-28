@@ -5,17 +5,17 @@ const PixelArtShader = {
   uniforms: {
     tDiffuse: { value: null },
     resolution: { value: new THREE.Vector2(640, 360) },
-    colorLevels: { value: 24.0 },
-    lightBands: { value: 6.0 },
-    ditherStrength: { value: 0.10 },
-    edgeStrength: { value: 0.12 },
-    vignetteStrength: { value: 0.05 },
-    shadowLift: { value: 0.05 },
-    contrast: { value: 1.04 },
-    saturation: { value: 1.12 },
-    shadowTint: { value: new THREE.Color(0x8fa1b5) },
-    midTint: { value: new THREE.Color(0xd5c59f) },
-    highlightTint: { value: new THREE.Color(0xffefc7) },
+    colorLevels: { value: 28.0 },
+    lightBands: { value: 7.0 },
+    ditherStrength: { value: 0.05 },
+    edgeStrength: { value: 0.09 },
+    vignetteStrength: { value: 0.035 },
+    shadowLift: { value: 0.035 },
+    contrast: { value: 1.02 },
+    saturation: { value: 0.98 },
+    shadowTint: { value: new THREE.Color(0xc1b9ad) },
+    midTint: { value: new THREE.Color(0xe2d7be) },
+    highlightTint: { value: new THREE.Color(0xfff2d3) },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -93,7 +93,7 @@ const PixelArtShader = {
       float ld = luma(texture2D(tDiffuse, vUv + vec2(0.0,-texel.y)).rgb);
 
       float edge = abs(lc - ll) + abs(lc - lr) + abs(lc - lu) + abs(lc - ld);
-      edge = smoothstep(0.08, 0.34, edge);
+      edge = smoothstep(0.1, 0.36, edge);
 
       float threshold = (bayer4(gl_FragCoord.xy) - 0.5) * ditherStrength;
       float bandValue = clamp(lc + threshold, 0.0, 1.0);
@@ -102,7 +102,7 @@ const PixelArtShader = {
       vec3 tint = mix(shadowTint, midTint, smoothstep(0.0, 0.58, bandValue));
       tint = mix(tint, highlightTint, smoothstep(0.58, 1.0, bandValue));
 
-      vec3 stylized = c * tint;
+      vec3 stylized = c * mix(vec3(1.0), tint, 0.24);
       stylized = applySaturation(stylized, saturation);
       stylized = floor(stylized * colorLevels + 0.5) / colorLevels;
       stylized *= 1.0 - edge * edgeStrength;

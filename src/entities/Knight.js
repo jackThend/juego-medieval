@@ -42,6 +42,8 @@ export class Knight {
     this.screenRight = new THREE.Vector3();
     this.worldUp = new THREE.Vector3(0, 1, 0);
     this.stepDistance = 0;
+    this.moveTargetStopRadius = 0.34;
+    this.queuedAttack = false;
 
     const physicsPlayer = this.physics.createPlayerCapsule({ x: 0, y: 0.74, z: 8.5 });
     this.body = physicsPlayer.body;
@@ -86,6 +88,7 @@ export class Knight {
     this._mesh(new THREE.CylinderGeometry(0.38, 0.33, 0.7, 6), this.mat.armor, this.torso, [0, 0.28, 0]);
     this._mesh(new THREE.CylinderGeometry(0.39, 0.47, 0.42, 4), this.mat.cloth, this.torso, [0, -0.18, 0], [0, Math.PI / 4, 0]);
     this._mesh(new THREE.BoxGeometry(0.75, 0.11, 0.12), this.mat.leather, this.torso, [0, 0.0, 0.31]);
+    this._mesh(new THREE.BoxGeometry(0.12, 0.42, 0.05), this.mat.cloth, this.torso, [0, 0.27, -0.35]);
     this._mesh(new THREE.SphereGeometry(0.23, 6, 4), this.mat.armor, this.torso, [-0.42, 0.48, 0], [0, 0, 0], [1.15, 0.65, 1]);
     this._mesh(new THREE.SphereGeometry(0.23, 6, 4), this.mat.armor, this.torso, [0.42, 0.48, 0], [0, 0, 0], [1.15, 0.65, 1]);
 
@@ -137,6 +140,15 @@ export class Knight {
     this.cape.castShadow = true;
     this.model.add(this.cape);
 
+    this.destinationRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.18, 0.28, 20),
+      new THREE.MeshBasicMaterial({ color: 0xd6c48b, transparent: true, opacity: 0.0, depthWrite: false, toneMapped: false }),
+    );
+    this.destinationRing.rotation.x = -Math.PI / 2;
+    this.destinationRing.position.y = 0.045;
+    this.destinationRing.visible = false;
+    this.scene.add(this.destinationRing);
+
     this.selectionRing = new THREE.Mesh(
       new THREE.RingGeometry(0.42, 0.56, 24),
       new THREE.MeshBasicMaterial({ color: 0xf3dc8b, transparent: true, opacity: 0.65, depthWrite: false, toneMapped: false }),
@@ -145,7 +157,7 @@ export class Knight {
     this.selectionRing.position.y = 0.035;
     this.root.add(this.selectionRing);
 
-    this.model.scale.setScalar(1.02);
+    this.model.scale.setScalar(1.04);
   }
 
   fixedUpdate(dt) {
@@ -170,7 +182,10 @@ export class Knight {
       }
     }
 
-    if (this.hurtTime <= 0 && this.input.consumePressed("KeyJ") && this.attackTime <= 0 && this.dashTime <= 0) {
+    const attackRequested = this.input.consumePressed("KeyJ") || this.queuedAttack;
+    this.queuedAttack = false;
+
+    if (this.hurtTime <= 0 && attackRequested && this.attackTime <= 0 && this.dashTime <= 0) {
       this.attackTime = this.attackDuration;
       this.attackStrikeFired = false;
       this.audio.playSword();
@@ -194,6 +209,24 @@ export class Knight {
       .addScaledVector(this.screenRight, axes.x);
 
     if (this.desiredMove.lengthSq() > 1) this.desiredMove.normalize();
+
+    const target = this.input.getMoveTarget();
+    const hasManualInput = Math.abs(axes.x) > 0.001 || Math.abs(axes.y) > 0.001;
+    if (!hasManualInput && target && this.hurtTime <= 0) {
+      const p = this.body.translation();
+      this.desiredMove.set(target.x - p.x, 0, target.z - p.z);
+      const distance = this.desiredMove.length();
+      const stopRadius = target.stopRadius ?? this.moveTargetStopRadius;
+      if (distance <= stopRadius) {
+        this.desiredMove.set(0, 0, 0);
+        this.input.clearMoveTarget();
+      } else {
+        this.desiredMove.divideScalar(distance);
+      }
+    } else if (hasManualInput) {
+      this.input.clearMoveTarget();
+    }
+
     const moving = this.desiredMove.lengthSq() > 0.0001;
     if (moving && this.hurtTime <= 0) this.facing.lerp(this.desiredMove, 0.32).normalize();
 
@@ -315,6 +348,17 @@ export class Knight {
     this.selectionRing.scale.setScalar(ringPulse);
     this.selectionRing.material.opacity = this.dead ? 0.18 : (this.dashTime > 0 ? 0.92 : 0.68);
 
+    const moveTarget = this.input.getMoveTarget();
+    if (moveTarget && !this.dead) {
+      this.destinationRing.visible = true;
+      this.destinationRing.position.set(moveTarget.x, 0.045, moveTarget.z);
+      const pulse = 1.0 + Math.sin(time * 6.0) * 0.08;
+      this.destinationRing.scale.setScalar(pulse);
+      this.destinationRing.material.opacity = 0.58;
+    } else {
+      this.destinationRing.visible = false;
+    }
+
     if (moveAmount > 0.16 && this.grounded && this.dashTime <= 0 && !this.dead) {
       this.stepDistance += planarSpeed * dt;
       const stepLength = planarSpeed > this.walkSpeed + 0.4 ? 0.74 : 0.9;
@@ -327,6 +371,10 @@ export class Knight {
     }
   }
 
+  queueAttack() {
+    this.queuedAttack = true;
+  }
+
   getPosition(target = new THREE.Vector3()) {
     return target.copy(this.root.position);
   }
@@ -337,5 +385,11 @@ export class Knight {
 
   getHealthRatio() {
     return this.health / this.maxHealth;
+  }
+
+  dispose() {
+    this.destinationRing?.removeFromParent();
+    this.destinationRing?.geometry?.dispose?.();
+    this.destinationRing?.material?.dispose?.();
   }
 }

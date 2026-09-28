@@ -32,6 +32,7 @@ export class CorruptedGuardian {
     this.velocity = new THREE.Vector3();
     this.knockback = new THREE.Vector3();
     this.toPlayer = new THREE.Vector3();
+    this.hovered = false;
 
     const character = this.physics.createCharacterCapsule({
       x: spawn.x,
@@ -79,6 +80,7 @@ export class CorruptedGuardian {
     this.model.add(this.torso);
     this._mesh(new THREE.CylinderGeometry(0.44, 0.36, 0.82, 6), this.mat.enemyArmor, this.torso, [0, 0.28, 0]);
     this._mesh(new THREE.CylinderGeometry(0.43, 0.54, 0.5, 5), this.mat.enemyCloth, this.torso, [0, -0.28, 0], [0, Math.PI / 5, 0]);
+    this._mesh(new THREE.BoxGeometry(0.16, 0.55, 0.07), this.mat.enemyGlow, this.torso, [0, 0.27, -0.42]);
     this._mesh(new THREE.SphereGeometry(0.29, 6, 4), this.mat.enemyArmorDark, this.torso, [-0.5, 0.55, 0], [0, 0, 0], [1.15, 0.72, 1.0]);
     this._mesh(new THREE.SphereGeometry(0.29, 6, 4), this.mat.enemyArmorDark, this.torso, [0.5, 0.55, 0], [0, 0, 0], [1.15, 0.72, 1.0]);
     this._mesh(new THREE.ConeGeometry(0.16, 0.46, 5), this.mat.enemyArmorDark, this.torso, [-0.75, 0.72, -0.02], [0, 0, -0.85]);
@@ -260,9 +262,10 @@ export class CorruptedGuardian {
       this.torso.rotation.y = damp(this.torso.rotation.y, 0, 9, dt);
     }
 
-    const ringPulse = 1.0 + Math.sin(time * (this.phaseTwo ? 6.4 : 3.2)) * (this.phaseTwo ? 0.08 : 0.03);
+    const hoverBoost = this.hovered ? 0.08 : 0.0;
+    const ringPulse = 1.0 + Math.sin(time * (this.phaseTwo ? 6.4 : 3.2)) * (this.phaseTwo ? 0.08 : 0.03) + hoverBoost;
     this.selectionRing.scale.setScalar(ringPulse);
-    this.selectionRing.material.opacity = this.dead ? 0.0 : (this.phaseTwo ? 0.88 : 0.62);
+    this.selectionRing.material.opacity = this.dead ? 0.0 : (this.hovered ? 0.96 : (this.phaseTwo ? 0.88 : 0.62));
 
     if (this.phaseTwo && !this.dead) {
       const pulse = 1 + Math.sin(time * 8.0) * 0.07;
@@ -279,6 +282,10 @@ export class CorruptedGuardian {
     } else {
       this.model.rotation.z = damp(this.model.rotation.z, 0, 10, dt);
     }
+  }
+
+  setHovered(flag) {
+    this.hovered = Boolean(flag) && !this.dead;
   }
 
   getPosition(target = new THREE.Vector3()) {

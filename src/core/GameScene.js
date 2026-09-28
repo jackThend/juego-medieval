@@ -49,12 +49,12 @@ function createSkyDome() {
 
 export function createGameScene() {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x34392d);
-  scene.fog = new THREE.FogExp2(0x41483d, 0.020);
+  scene.background = new THREE.Color(0x3a392f);
+  scene.fog = new THREE.FogExp2(0x48463e, 0.020);
   const sky = createSkyDome();
   scene.add(sky);
 
-  const key = new THREE.DirectionalLight(0xffddb0, 3.0);
+  const key = new THREE.DirectionalLight(0xffddb8, 2.95);
   key.position.set(-8, 13, 7);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -68,10 +68,10 @@ export function createGameScene() {
   key.shadow.normalBias = 0.035;
   scene.add(key);
 
-  const fill = new THREE.HemisphereLight(0xb6c1d0, 0x7d6648, 2.15);
+  const fill = new THREE.HemisphereLight(0xc5c2bb, 0x7f6f58, 2.0);
   scene.add(fill);
 
-  const rim = new THREE.DirectionalLight(0xa8d0ff, 2.5);
+  const rim = new THREE.DirectionalLight(0xa2acc0, 2.3);
   rim.position.set(9, 10, -12);
   scene.add(rim);
 

@@ -51,6 +51,8 @@ export class CameraRig {
     this.focus.copy(this.smoothedTarget);
     this.focus.y += this.lookHeight;
 
+    // Pixel snapping en el plano del suelo: reduce el shimmer sub-píxel típico
+    // de cámaras ortográficas que siguen suavemente un objetivo.
     if (this.pixelWorldSize > 0) {
       const x = this.focus.x;
       const z = this.focus.z;

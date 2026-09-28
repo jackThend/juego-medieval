@@ -36,6 +36,30 @@ export class EffectSystem {
     });
     this.points = new THREE.Points(geometry, material);
     this.scene.add(this.points);
+
+    this.slashPool = Array.from({ length: 8 }, (_, index) => {
+      const slashMaterial = new THREE.MeshBasicMaterial({
+        color: index % 2 === 0 ? 0xffe3a1 : 0xc7d7e6,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        toneMapped: false,
+      });
+      const slash = new THREE.Mesh(
+        new THREE.RingGeometry(0.58, 1.02, 16, 1, -0.78, 1.56),
+        slashMaterial,
+      );
+      slash.rotation.x = -Math.PI / 2;
+      slash.visible = false;
+      slash.userData.life = 0;
+      slash.userData.maxLife = 0.16;
+      slash.userData.enemy = false;
+      this.scene.add(slash);
+      return slash;
+    });
+    this.slashCursor = 0;
   }
 
   burst(position, direction, amount = 10, speed = 5) {
@@ -61,6 +85,19 @@ export class EffectSystem {
     this.points.geometry.attributes.position.needsUpdate = true;
   }
 
+  slash(position, direction, enemy = false) {
+    const slash = this.slashPool[this.slashCursor];
+    this.slashCursor = (this.slashCursor + 1) % this.slashPool.length;
+    slash.visible = true;
+    slash.userData.life = slash.userData.maxLife;
+    slash.userData.enemy = enemy;
+    slash.position.set(position.x, position.y + 0.08, position.z);
+    slash.rotation.set(-Math.PI / 2, 0, Math.atan2(direction.z, direction.x) + (enemy ? 0.18 : -0.18));
+    slash.scale.setScalar(enemy ? 1.24 : 1.0);
+    slash.material.color.setHex(enemy ? 0xff7652 : 0xffe7ad);
+    slash.material.opacity = 0.78;
+  }
+
   shake(duration = 0.12, power = 0.1) {
     this.shakeTime = Math.max(this.shakeTime, duration);
     this.shakePower = Math.max(this.shakePower, power);
@@ -83,6 +120,20 @@ export class EffectSystem {
       this.positions[i * 3 + 2] += particle.velocity.z * dt;
     }
     this.points.geometry.attributes.position.needsUpdate = true;
+
+    for (const slash of this.slashPool) {
+      if (!slash.visible) continue;
+      slash.userData.life -= dt;
+      if (slash.userData.life <= 0) {
+        slash.visible = false;
+        slash.material.opacity = 0;
+        continue;
+      }
+      const t = 1 - slash.userData.life / slash.userData.maxLife;
+      slash.material.opacity = (1 - t) * 0.78;
+      slash.scale.multiplyScalar(1 + dt * 2.4);
+      slash.rotation.z += (slash.userData.enemy ? -1 : 1) * dt * 1.5;
+    }
 
     if (this.shakeTime > 0) {
       this.shakeTime = Math.max(0, this.shakeTime - dt);

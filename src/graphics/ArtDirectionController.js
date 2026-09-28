@@ -2,34 +2,34 @@ import * as THREE from "three";
 
 const PALETTES = {
   neutral: {
-    fog: 0x41483d,
-    key: 0xffddb0,
-    fillSky: 0xb6c1d0,
-    fillGround: 0x7d6648,
-    rim: 0xa8d0ff,
-    top: 0x4a5575,
-    horizon: 0x8a7458,
-    bottom: 0x39382a,
+    fog: 0x48463e,
+    key: 0xffddb8,
+    fillSky: 0xc5c2bb,
+    fillGround: 0x7f6f58,
+    rim: 0xa2acc0,
+    top: 0x5c6273,
+    horizon: 0x8b775f,
+    bottom: 0x443b31,
   },
   corruption: {
-    fog: 0x46383a,
-    key: 0xffc7a0,
-    fillSky: 0xb6a8bd,
-    fillGround: 0x68484b,
-    rim: 0xff7054,
-    top: 0x4d435d,
-    horizon: 0x87554e,
-    bottom: 0x392a2d,
+    fog: 0x4b433e,
+    key: 0xffd1ad,
+    fillSky: 0xc4bbb2,
+    fillGround: 0x7b6254,
+    rim: 0xc17c59,
+    top: 0x625a60,
+    horizon: 0x8e6f5f,
+    bottom: 0x493932,
   },
   sanctum: {
-    fog: 0x38474c,
-    key: 0xffe2ad,
-    fillSky: 0xb6d1df,
-    fillGround: 0x59685f,
-    rim: 0x7fc4ff,
-    top: 0x3f5879,
-    horizon: 0x8b7b62,
-    bottom: 0x2f393b,
+    fog: 0x434844,
+    key: 0xffe0b6,
+    fillSky: 0xcfd0c9,
+    fillGround: 0x7a6f5f,
+    rim: 0x9cb6bf,
+    top: 0x596475,
+    horizon: 0x8c7b66,
+    bottom: 0x403d37,
   },
 };
 
@@ -93,8 +93,8 @@ export class ArtDirectionController {
       const neutral = new THREE.Color(PALETTES.neutral[key]);
       const corrupt = new THREE.Color(PALETTES.corruption[key]);
       const holy = new THREE.Color(PALETTES.sanctum[key]);
-      this.mixA.copy(neutral).lerp(corrupt, corruption * 0.82);
-      this.mixB.copy(this.mixA).lerp(holy, sanctum * (shrineActive ? 1.0 : 0.78));
+      this.mixA.copy(neutral).lerp(corrupt, corruption * 0.26);
+      this.mixB.copy(this.mixA).lerp(holy, sanctum * (shrineActive ? 0.42 : 0.28));
       this.targets[key].copy(this.mixB);
     }
 
@@ -110,7 +110,7 @@ export class ArtDirectionController {
     this.skyMaterial.uniforms.horizonColor.value.copy(this.current.horizon);
     this.skyMaterial.uniforms.bottomColor.value.copy(this.current.bottom);
 
-    this.rim.intensity = THREE.MathUtils.lerp(2.45, enemyAlive ? 3.0 : 2.75, corruption * 0.65 + sanctum * 0.35);
-    this.key.intensity = THREE.MathUtils.lerp(2.9, 3.15, sanctum * 0.65);
+    this.rim.intensity = THREE.MathUtils.lerp(2.2, enemyAlive ? 2.45 : 2.35, corruption * 0.3 + sanctum * 0.18);
+    this.key.intensity = THREE.MathUtils.lerp(2.85, 3.0, sanctum * 0.28);
   }
 }

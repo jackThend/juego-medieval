@@ -74,6 +74,7 @@ async function boot() {
   });
 
   const artDirection = new ArtDirectionController(scene, { enemy: guardian, world });
+  input.bindPointerMovement(engine.renderer.domElement, cameraRig.camera, THREE);
 
   const startGame = async () => {
     if (director.state !== "intro") return;

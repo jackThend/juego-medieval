@@ -39,6 +39,7 @@ export class Engine {
 
     this._onResize = () => this.resize();
     this._onVisibilityChange = () => {
+      // Al volver a la pestaña descartamos el tiempo suspendido para evitar una ráfaga de física.
       if (!document.hidden) {
         this.lastTime = performance.now();
         this.accumulator = 0;
@@ -54,6 +55,8 @@ export class Engine {
     const displayH = Math.max(1, window.innerHeight);
     const aspect = displayW / displayH;
 
+    // Escala pixel-art por peldaños: intentamos que el upscale sea un múltiplo entero
+    // (2x, 3x, 4x...) para evitar columnas de píxeles con anchuras desiguales.
     const integerScale = Math.max(2, Math.min(4, Math.floor(displayH / 320)));
     const h = Math.min(this.internalHeight, Math.max(320, Math.floor(displayH / integerScale)));
     const w = Math.max(320, Math.floor(displayW / integerScale));
@@ -84,6 +87,7 @@ export class Engine {
         subSteps += 1;
       }
 
+      // Protección contra spiral-of-death en pestañas saturadas o dispositivos lentos.
       if (subSteps === this.maxSubSteps && this.accumulator >= this.fixedDt) {
         this.accumulator %= this.fixedDt;
       }

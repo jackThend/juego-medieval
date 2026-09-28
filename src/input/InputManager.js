@@ -8,6 +8,20 @@ export class InputManager {
     this.gamepadAxes = { x: 0, y: 0 };
     this.gamepadRun = false;
     this.previousGamepadButtons = new Map();
+    this.pointer = {
+      active: false,
+      down: false,
+      follow: false,
+      movedWhileDown: false,
+      target: { x: 0, y: 0, z: 0, stopRadius: 0.34 },
+      hoverActive: false,
+      hover: { x: 0, y: 0, z: 0 },
+      screen: { x: 0, y: 0 },
+    };
+    this.raycaster = null;
+    this.pointerPlane = null;
+    this.pointerElement = null;
+    this.pointerCamera = null;
     this._virtualCleanup = [];
 
     this._onKeyDown = (event) => {
@@ -24,7 +38,6 @@ export class InputManager {
       this.keys.delete(event.code);
     };
 
-    // Evita teclas "pegadas" si el jugador cambia de pestaña mientras mantiene una dirección.
     this._onBlur = () => this.resetHeldInputs();
 
     window.addEventListener("keydown", this._onKeyDown, { passive: false });
@@ -117,6 +130,111 @@ export class InputManager {
     });
   }
 
+  bindPointerMovement(element, camera, THREERef) {
+    this.pointerElement = element;
+    this.pointerCamera = camera;
+    this.raycaster = new THREERef.Raycaster();
+    this.pointerPlane = new THREERef.Plane(new THREERef.Vector3(0, 1, 0), 0);
+    this.pointerHit = new THREERef.Vector3();
+
+    const updatePointerFromEvent = (event, setCommand = false) => {
+      if (!this.pointerElement || !this.pointerCamera) return false;
+      const rect = this.pointerElement.getBoundingClientRect();
+      if (!rect.width || !rect.height) return false;
+      const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      this.pointer.screen.x = x;
+      this.pointer.screen.y = y;
+      this.raycaster.setFromCamera({ x, y }, this.pointerCamera);
+      if (!this.raycaster.ray.intersectPlane(this.pointerPlane, this.pointerHit)) return false;
+      this.pointer.hover.x = this.pointerHit.x;
+      this.pointer.hover.y = 0;
+      this.pointer.hover.z = this.pointerHit.z;
+      this.pointer.hoverActive = true;
+      if (setCommand) this.setMoveTarget(this.pointerHit, 0.34);
+      return true;
+    };
+
+    const onPointerDown = (event) => {
+      if (event.button !== 0) return;
+      if (!this.enabled) return;
+      event.preventDefault();
+      this.pointer.down = true;
+      this.pointer.follow = true;
+      this.pointer.movedWhileDown = false;
+      updatePointerFromEvent(event, true);
+      this.justPressed.add("PointerPrimary");
+      element.setPointerCapture?.(event.pointerId);
+    };
+
+    const onPointerMove = (event) => {
+      if (!this.enabled) return;
+      updatePointerFromEvent(event, this.pointer.down && this.pointer.follow);
+      if (this.pointer.down) this.pointer.movedWhileDown = true;
+    };
+
+    const onPointerUp = (event) => {
+      if (event.button !== 0) return;
+      if (!this.enabled) return;
+      event.preventDefault();
+      if (!this.pointer.movedWhileDown) updatePointerFromEvent(event, true);
+      this.pointer.down = false;
+      this.pointer.follow = false;
+    };
+
+    const onPointerCancel = () => {
+      this.pointer.down = false;
+      this.pointer.follow = false;
+    };
+
+    const onPointerLeave = () => {
+      this.pointer.hoverActive = false;
+    };
+
+    const onContextMenu = (event) => event.preventDefault();
+
+    element.addEventListener("pointerdown", onPointerDown, { passive: false });
+    element.addEventListener("pointermove", onPointerMove, { passive: false });
+    element.addEventListener("pointerup", onPointerUp, { passive: false });
+    element.addEventListener("pointercancel", onPointerCancel, { passive: false });
+    element.addEventListener("pointerleave", onPointerLeave);
+    element.addEventListener("contextmenu", onContextMenu);
+
+    this._virtualCleanup.push(() => {
+      element.removeEventListener("pointerdown", onPointerDown);
+      element.removeEventListener("pointermove", onPointerMove);
+      element.removeEventListener("pointerup", onPointerUp);
+      element.removeEventListener("pointercancel", onPointerCancel);
+      element.removeEventListener("pointerleave", onPointerLeave);
+      element.removeEventListener("contextmenu", onContextMenu);
+    });
+  }
+
+  hasMovementInput() {
+    const axes = this.getMovementAxes();
+    return Math.abs(axes.x) > 0.001 || Math.abs(axes.y) > 0.001;
+  }
+
+  getMoveTarget() {
+    return this.pointer.active ? this.pointer.target : null;
+  }
+
+  getPointerWorld() {
+    return this.pointer.hoverActive ? this.pointer.hover : null;
+  }
+
+  setMoveTarget(position, stopRadius = 0.34) {
+    this.pointer.target.x = position.x;
+    this.pointer.target.y = position.y ?? 0;
+    this.pointer.target.z = position.z;
+    this.pointer.target.stopRadius = stopRadius;
+    this.pointer.active = true;
+  }
+
+  clearMoveTarget() {
+    this.pointer.active = false;
+  }
+
   getMovementAxes() {
     const keyboardX = (this.isDown("KeyD", "ArrowRight") ? 1 : 0) - (this.isDown("KeyA", "ArrowLeft") ? 1 : 0);
     const keyboardY = (this.isDown("KeyW", "ArrowUp") ? 1 : 0) - (this.isDown("KeyS", "ArrowDown") ? 1 : 0);
@@ -140,6 +258,10 @@ export class InputManager {
     this.keys.clear();
     this.virtualDirections.clear();
     this.virtualRun = false;
+    this.pointer.active = false;
+    this.pointer.down = false;
+    this.pointer.follow = false;
+    this.pointer.hoverActive = false;
     this.gamepadAxes.x = 0;
     this.gamepadAxes.y = 0;
     this.gamepadRun = false;
@@ -147,8 +269,6 @@ export class InputManager {
   }
 
   endFixedStep() {
-    // Las pulsaciones discretas viven hasta el siguiente paso de simulación.
-    // Así no se pierden si ocurren entre dos requestAnimationFrame.
     this.justPressed.clear();
   }
 

@@ -35,6 +35,7 @@ export class WorldBuilder {
     this._ground();
     this._paths();
     this._arena();
+    this._handcraftedComposition();
     this._ruins();
     this._processionalMarkers();
     this._sanctumBackdrop();
@@ -132,6 +133,60 @@ export class WorldBuilder {
     }
 
     this.scene.add(arena);
+  }
+
+  _handcraftedComposition() {
+    const group = new THREE.Group();
+
+    // Calzada ritual: piezas colocadas a mano para que el recorrido se lea como un lugar diseñado.
+    const slabGeo = new THREE.BoxGeometry(1.05, 0.07, 0.72);
+    const slabDummy = new THREE.Object3D();
+    const placements = [
+      [-0.55, 7.2, -0.02, 0.96], [0.62, 6.25, 0.03, 1.0], [-0.42, 5.25, -0.04, 0.92],
+      [0.48, 4.15, 0.02, 1.04], [-0.34, 3.05, 0.01, 0.94], [0.35, 1.95, -0.03, 1.0],
+      [-0.30, 0.8, 0.02, 0.96], [0.28, -0.4, -0.02, 0.98], [-0.22, -1.7, 0.03, 0.95],
+    ];
+    const slabs = new THREE.InstancedMesh(slabGeo, this.mat.stone, placements.length);
+    placements.forEach(([x, z, yaw, scale], index) => {
+      slabDummy.position.set(x, 0.075, z);
+      slabDummy.rotation.set(0, yaw, 0);
+      slabDummy.scale.set(scale, 1, scale);
+      slabDummy.updateMatrix();
+      slabs.setMatrixAt(index, slabDummy.matrix);
+    });
+    slabs.instanceMatrix.needsUpdate = true;
+    slabs.receiveShadow = true;
+    group.add(slabs);
+
+    // Escalinata visual hacia el santuario.
+    for (let i = 0; i < 3; i += 1) {
+      const step = new THREE.Mesh(new THREE.BoxGeometry(5.2 - i * 0.36, 0.14, 0.72), this.mat.darkStone);
+      step.position.set(0, 0.07 + i * 0.11, -9.2 - i * 0.52);
+      step.castShadow = true;
+      step.receiveShadow = true;
+      group.add(step);
+    }
+
+    // Pedestales simétricos pero dañados: orden visual de RPG clásico, no dispersión aleatoria.
+    const plinths = [
+      [-3.65, 5.0, 0.0], [3.65, 5.0, 0.0],
+      [-4.0, -1.1, 0.12], [4.0, -1.1, -0.12],
+      [-3.35, -8.15, 0.05], [3.35, -8.15, -0.05],
+    ];
+    plinths.forEach(([x, z, lean], index) => {
+      const plinth = new THREE.Group();
+      const base = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.28, 0.82), this.mat.darkStone);
+      base.position.y = 0.14;
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.46, index < 2 ? 1.45 : 1.05, 0.46), this.mat.stone);
+      pillar.position.y = index < 2 ? 0.9 : 0.7;
+      pillar.rotation.z = lean;
+      plinth.add(base, pillar);
+      plinth.position.set(x, 0, z);
+      shadowify(plinth);
+      group.add(plinth);
+    });
+
+    this.scene.add(group);
   }
 
   _createWall({ x, z, width, rows = 5, yaw = 0, missing = 0.18 }) {

@@ -265,3 +265,48 @@ canvas {
   .touch-actions button { width: 52px; height: 52px; }
   .touch-actions__attack { transform: scale(1.12); }
 }
+
+/* Iteración 7 · marco clásico de RPG isométrico */
+.hud__top-left {
+  padding: 10px 13px 11px;
+  border-left: 2px solid rgba(201,174,116,.52);
+  border-top: 2px solid rgba(201,174,116,.32);
+  background: linear-gradient(135deg, rgba(12,13,10,.78), rgba(12,13,10,.18) 78%);
+  box-shadow: -3px -3px 0 rgba(0,0,0,.28), inset 1px 1px 0 rgba(242,220,169,.08);
+}
+.hud__brand {
+  color: #f0dfb8;
+  letter-spacing: .14em;
+}
+.player-status, .enemy-status {
+  filter: drop-shadow(0 3px 0 rgba(0,0,0,.6));
+}
+.pixel-bar {
+  border-color: rgba(218,194,143,.78);
+  background: #15150f;
+}
+.pixel-bar--player .pixel-bar__fill {
+  background: linear-gradient(90deg, #6e2e27 0%, #a14935 58%, #c06a46 100%);
+}
+.pixel-bar--enemy .pixel-bar__fill {
+  background: linear-gradient(90deg, #451d20 0%, #762a29 55%, #b14a31 100%);
+}
+.enemy-status {
+  padding: 8px 14px 10px;
+  border-top: 1px solid rgba(202,174,116,.3);
+  background: linear-gradient(180deg, rgba(10,10,8,.68), rgba(10,10,8,0));
+}
+.interaction-prompt {
+  border: 2px solid rgba(207,181,126,.42);
+  box-shadow: 0 3px 0 rgba(0,0,0,.52), inset 0 0 0 1px rgba(255,235,184,.05);
+  background: rgba(17,16,12,.88);
+}
+.hud__controls {
+  padding: 6px 10px;
+  border-top: 1px solid rgba(197,171,118,.16);
+  background: linear-gradient(90deg, rgba(10,11,8,.64), transparent);
+}
+#start-button {
+  border: 2px solid rgba(225,206,158,.5);
+  box-shadow: 0 4px 0 #080906, inset 0 0 0 1px rgba(255,244,214,.08);
+}
