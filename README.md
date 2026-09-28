@@ -127,3 +127,8 @@ El repositorio incluye `.github/workflows/deploy-pages.yml` para compilar y publ
 - Three.js `0.186.1`
 - `@dimforge/rapier3d-compat` `0.21.0`
 - Vite `8.3.1`
+
+
+## Iteración visual 3
+
+La versión desplegada incorpora una revisión de legibilidad y dirección artística: dithering reducido, mayor separación tonal, cámara más cercana, arena de combate, marcadores procesionales, fachada de abadía/santuario y siluetas más legibles para el caballero y el Guardián.
