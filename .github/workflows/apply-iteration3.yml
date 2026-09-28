@@ -1,0 +1,51 @@
+name: Apply iteration 3
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "update-iteration3/**"
+      - ".github/workflows/apply-iteration3.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "apply-iteration3"
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Reconstruct and verify iteration 3
+        shell: bash
+        run: |
+          cat update-iteration3/part*.b64 > iteration3-source.b64
+          test "$(wc -c < iteration3-source.b64)" -eq 39248
+          base64 --decode iteration3-source.b64 > iteration3-source.tar.gz
+          echo "a577baf74bc7542031cf80eb44910244878dfcb1778ec276dc44eedf2f7a8a36  iteration3-source.tar.gz" | sha256sum -c -
+
+          mkdir unpacked
+          tar -xzf iteration3-source.tar.gz -C unpacked
+
+          rm -rf src scripts
+          cp unpacked/package.json unpacked/index.html unpacked/vite.config.js .
+          cp -R unpacked/src unpacked/scripts .
+
+          rm -rf update-iteration3 iteration3-source.b64 iteration3-source.tar.gz unpacked
+          rm -f .github/workflows/apply-iteration3.yml
+
+      - name: Commit iteration 3
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Apply Ruinas del Ocaso iteration 3"
+          git push
