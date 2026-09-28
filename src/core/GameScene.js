@@ -36,7 +36,7 @@ function createSkyDome() {
         vec3 color = mix(bottomColor, horizonColor, lower);
         color = mix(color, topColor, upper);
 
-        float grain = (hash(floor(gl_FragCoord.xy / 2.0)) - 0.5) * 0.018;
+        float grain = (hash(floor(gl_FragCoord.xy / 3.0)) - 0.5) * 0.009;
         gl_FragColor = vec4(color + grain, 1.0);
       }
     `,
@@ -51,7 +51,8 @@ export function createGameScene() {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x34392d);
   scene.fog = new THREE.FogExp2(0x41483d, 0.020);
-  scene.add(createSkyDome());
+  const sky = createSkyDome();
+  scene.add(sky);
 
   const key = new THREE.DirectionalLight(0xffddb0, 3.0);
   key.position.set(-8, 13, 7);
@@ -75,6 +76,13 @@ export function createGameScene() {
   scene.add(rim);
 
   scene.add(new THREE.AmbientLight(0x4b5448, 0.24));
+
+  scene.userData.artDirection = {
+    key,
+    fill,
+    rim,
+    skyMaterial: sky.material,
+  };
 
   return scene;
 }
