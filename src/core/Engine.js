@@ -39,7 +39,6 @@ export class Engine {
 
     this._onResize = () => this.resize();
     this._onVisibilityChange = () => {
-      // Al volver a la pestaña descartamos el tiempo suspendido para evitar una ráfaga de física.
       if (!document.hidden) {
         this.lastTime = performance.now();
         this.accumulator = 0;
@@ -55,9 +54,9 @@ export class Engine {
     const displayH = Math.max(1, window.innerHeight);
     const aspect = displayW / displayH;
 
-    // El mundo se rasteriza realmente a baja resolución; CSS sólo amplía píxeles ya existentes.
-    const h = Math.min(this.internalHeight, Math.max(300, Math.round(displayH * 0.54)));
-    const w = Math.max(320, Math.round(h * aspect));
+    const integerScale = Math.max(2, Math.min(4, Math.floor(displayH / 320)));
+    const h = Math.min(this.internalHeight, Math.max(320, Math.floor(displayH / integerScale)));
+    const w = Math.max(320, Math.floor(displayW / integerScale));
 
     this.renderer.setSize(w, h, false);
     this.post.resize(w, h);
@@ -85,7 +84,6 @@ export class Engine {
         subSteps += 1;
       }
 
-      // Protección contra spiral-of-death en pestañas saturadas o dispositivos lentos.
       if (subSteps === this.maxSubSteps && this.accumulator >= this.fixedDt) {
         this.accumulator %= this.fixedDt;
       }
