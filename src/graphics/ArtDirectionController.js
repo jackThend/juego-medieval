@@ -2,19 +2,19 @@ import * as THREE from "three";
 
 const PALETTES = {
   neutral: {
-    fog: 0x111a17, key: 0x9fc6ee, fillSky: 0x55738a, fillGround: 0x121812,
-    rim: 0x7eaee1, spot: 0xa9d5ff, top: 0x0d1622, horizon: 0x182720, bottom: 0x080d0c,
-    fogDensity: 0.027, spotIntensity: 3.5,
+    fog: 0x16211d, key: 0xa9c9e8, fillSky: 0x6f91a8, fillGround: 0x263129,
+    rim: 0x83b4e5, spot: 0xb4dcff, top: 0x142033, horizon: 0x20342c, bottom: 0x0d1512,
+    fogDensity: 0.0215, spotIntensity: 4.4,
   },
   corruption: {
-    fog: 0x1c1717, key: 0xb7a6b5, fillSky: 0x68566d, fillGround: 0x1b1113,
+    fog: 0x241c1d, key: 0xbbaeb9, fillSky: 0x756578, fillGround: 0x2b2021,
     rim: 0xb96c62, spot: 0xb7b9d3, top: 0x161422, horizon: 0x2a1c21, bottom: 0x0c090a,
-    fogDensity: 0.03, spotIntensity: 2.9,
+    fogDensity: 0.024, spotIntensity: 3.7,
   },
   sanctum: {
-    fog: 0x121b1c, key: 0xb8cce0, fillSky: 0x5f7b88, fillGround: 0x151a16,
+    fog: 0x172324, key: 0xc2d3e3, fillSky: 0x7894a0, fillGround: 0x27312b,
     rim: 0x8ebbdc, spot: 0xb9ddff, top: 0x101b28, horizon: 0x1d2c28, bottom: 0x0a0f0e,
-    fogDensity: 0.024, spotIntensity: 3.9,
+    fogDensity: 0.02, spotIntensity: 4.7,
   },
 };
 
@@ -81,7 +81,7 @@ export class ArtDirectionController {
       const neutral = new THREE.Color(PALETTES.neutral[key]);
       const corrupt = new THREE.Color(PALETTES.corruption[key]);
       const holy = new THREE.Color(PALETTES.sanctum[key]);
-      this.mixA.copy(neutral).lerp(corrupt, corruption * 0.52);
+      this.mixA.copy(neutral).lerp(corrupt, corruption * 0.34);
       this.mixB.copy(this.mixA).lerp(holy, sanctum * (shrineActive ? 0.72 : 0.5));
       this.targets[key].copy(this.mixB);
     }
@@ -114,10 +114,10 @@ export class ArtDirectionController {
     this.skyMaterial.uniforms.horizonColor.value.copy(this.current.horizon);
     this.skyMaterial.uniforms.bottomColor.value.copy(this.current.bottom);
 
-    this.key.intensity = THREE.MathUtils.lerp(1.5, 1.72, sanctum * 0.4);
-    this.rim.intensity = THREE.MathUtils.lerp(1.55, enemyAlive ? 1.82 : 1.7, corruption * 0.45 + sanctum * 0.2);
-    this.fill.intensity = THREE.MathUtils.lerp(0.58, 0.68, sanctum * 0.4);
-    this.ambient.intensity = THREE.MathUtils.lerp(0.1, 0.14, sanctum * 0.45);
+    this.key.intensity = THREE.MathUtils.lerp(2.05, 2.28, sanctum * 0.4);
+    this.rim.intensity = THREE.MathUtils.lerp(1.9, enemyAlive ? 2.05 : 1.95, corruption * 0.32 + sanctum * 0.2);
+    this.fill.intensity = THREE.MathUtils.lerp(1.18, 1.32, sanctum * 0.4);
+    this.ambient.intensity = THREE.MathUtils.lerp(0.28, 0.36, sanctum * 0.45);
 
     this.heroTarget.position.copy(this.playerPosition);
     this.heroTarget.position.y += 0.7;
