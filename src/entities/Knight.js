@@ -462,6 +462,12 @@ export class Knight {
     this.queuedAttack = true;
   }
 
+  faceToward(position) {
+    const p = this.body.translation();
+    this.facing.set(position.x - p.x, 0, position.z - p.z);
+    if (this.facing.lengthSq() > 0.0001) this.facing.normalize();
+  }
+
   getPosition(target = new THREE.Vector3()) {
     return target.copy(this.root.position);
   }
