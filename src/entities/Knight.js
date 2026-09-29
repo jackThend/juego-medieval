@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { getKnightSpriteTexture, makeBillboard } from "../graphics/PixelSpriteFactory.js";
 
 function damp(current, target, lambda, dt) {
   return THREE.MathUtils.lerp(current, target, 1 - Math.exp(-lambda * dt));
@@ -56,6 +57,14 @@ export class Knight {
     this.scene.add(this.root);
 
     this._buildModel();
+    this.model.visible = false;
+    this.shadowDisc.visible = false;
+    this.pixelSprite = makeBillboard(getKnightSpriteTexture("idle", "front", 0), 1.75, 2.0, { renderOrder: 6 });
+    this.pixelSprite.position.y = 0.02;
+    this.root.add(this.pixelSprite);
+    this._pixelState = "";
+    this._pixelDirection = "";
+    this._pixelFrame = -1;
     this.syncFromPhysics();
   }
 
@@ -337,6 +346,30 @@ export class Knight {
 
   updateVisuals(dt, time) {
     this.syncFromPhysics();
+
+    const planarSpeedForSprite = Math.hypot(this.moveVelocity.x, this.moveVelocity.z);
+    let spriteState = "idle";
+    if (this.hurtTime > 0) spriteState = "hurt";
+    else if (this.attackTime > 0) spriteState = "attack";
+    else if (planarSpeedForSprite > 0.25) spriteState = "walk";
+
+    let spriteDirection = "front";
+    if (Math.abs(this.facing.x) > Math.abs(this.facing.z) * 0.8) spriteDirection = "side";
+    else if (this.facing.z < 0) spriteDirection = "back";
+    const spriteFrame = Math.floor(time * (spriteState === "walk" ? 7 : spriteState === "attack" ? 9 : 3)) & 1;
+
+    if (spriteState !== this._pixelState || spriteDirection !== this._pixelDirection || spriteFrame !== this._pixelFrame) {
+      this.pixelSprite.material.map = getKnightSpriteTexture(spriteState, spriteDirection, spriteFrame);
+      this.pixelSprite.material.needsUpdate = true;
+      this._pixelState = spriteState;
+      this._pixelDirection = spriteDirection;
+      this._pixelFrame = spriteFrame;
+    }
+
+    this.pixelSprite.scale.x = (spriteDirection === "side" && this.facing.x < 0) ? -1.75 : 1.75;
+    this.pixelSprite.scale.y = this.dead ? 1.25 : 2.0;
+    this.pixelSprite.material.opacity = this.dead ? 0.62 : 1.0;
+    this.pixelSprite.visible = true;
 
     const planarSpeed = Math.hypot(this.moveVelocity.x, this.moveVelocity.z);
     const moveAmount = THREE.MathUtils.clamp(planarSpeed / this.runSpeed, 0, 1);
