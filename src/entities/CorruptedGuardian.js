@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { getGuardianSpriteTexture, makeBillboard } from "../graphics/PixelSpriteFactory.js";
 
 function damp(current, target, lambda, dt) {
   return THREE.MathUtils.lerp(current, target, 1 - Math.exp(-lambda * dt));
@@ -50,6 +51,14 @@ export class CorruptedGuardian {
     this.root.add(this.model);
     this.scene.add(this.root);
     this._buildModel();
+    this.model.visible = false;
+    this.shadowDisc.visible = false;
+    this.pixelSprite = makeBillboard(getGuardianSpriteTexture("idle", "front", 0), 2.35, 2.62, { renderOrder: 5 });
+    this.pixelSprite.position.y = 0.01;
+    this.root.add(this.pixelSprite);
+    this._pixelState = "";
+    this._pixelDirection = "";
+    this._pixelFrame = -1;
     this.syncFromPhysics();
   }
 
@@ -289,6 +298,30 @@ export class CorruptedGuardian {
 
   updateVisuals(dt, time) {
     this.syncFromPhysics();
+
+    const speedForSprite = Math.hypot(this.velocity.x, this.velocity.z);
+    let spriteState = "idle";
+    if (this.staggerTime > 0) spriteState = "hurt";
+    else if (this.attackTime > 0) spriteState = "attack";
+    else if (speedForSprite > 0.18) spriteState = "walk";
+
+    let spriteDirection = "front";
+    if (Math.abs(this.facing.x) > Math.abs(this.facing.z) * 0.8) spriteDirection = "side";
+    else if (this.facing.z < 0) spriteDirection = "back";
+    const spriteFrame = Math.floor(time * (this.phaseTwo ? 5 : 3.5)) & 1;
+
+    if (spriteState !== this._pixelState || spriteDirection !== this._pixelDirection || spriteFrame !== this._pixelFrame) {
+      this.pixelSprite.material.map = getGuardianSpriteTexture(spriteState, spriteDirection, spriteFrame);
+      this.pixelSprite.material.needsUpdate = true;
+      this._pixelState = spriteState;
+      this._pixelDirection = spriteDirection;
+      this._pixelFrame = spriteFrame;
+    }
+
+    this.pixelSprite.scale.x = (spriteDirection === "side" && this.facing.x < 0) ? -2.35 : 2.35;
+    this.pixelSprite.scale.y = this.dead ? 1.65 : 2.62;
+    this.pixelSprite.material.opacity = this.dead ? 0.42 : 1.0;
+    this.pixelSprite.visible = !this.dead || this.pixelSprite.material.opacity > 0.05;
 
     if (this.facing.lengthSq() > 0.001) {
       const targetYaw = Math.atan2(-this.facing.x, -this.facing.z);
