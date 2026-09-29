@@ -50,11 +50,11 @@ function createSkyDome() {
 export function createGameScene() {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x090e0d);
-  scene.fog = new THREE.FogExp2(0x111a17, 0.027);
+  scene.fog = new THREE.FogExp2(0x16211d, 0.0215);
   const sky = createSkyDome();
   scene.add(sky);
 
-  const key = new THREE.DirectionalLight(0x9fc6ee, 1.55);
+  const key = new THREE.DirectionalLight(0xa9c9e8, 2.15);
   key.position.set(-8, 13, 7);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -68,20 +68,20 @@ export function createGameScene() {
   key.shadow.normalBias = 0.035;
   scene.add(key);
 
-  const fill = new THREE.HemisphereLight(0x55738a, 0x121812, 0.62);
+  const fill = new THREE.HemisphereLight(0x6f91a8, 0x263129, 1.28);
   scene.add(fill);
 
-  const rim = new THREE.DirectionalLight(0x7eaee1, 1.65);
+  const rim = new THREE.DirectionalLight(0x83b4e5, 1.95);
   rim.position.set(9, 10, -12);
   scene.add(rim);
 
-  const ambient = new THREE.AmbientLight(0x1d2a24, 0.12);
+  const ambient = new THREE.AmbientLight(0x33453d, 0.32);
   scene.add(ambient);
 
   const heroTarget = new THREE.Object3D();
   scene.add(heroTarget);
 
-  const heroSpot = new THREE.SpotLight(0xa9d5ff, 3.5, 13, Math.PI * 0.22, 0.78, 1.7);
+  const heroSpot = new THREE.SpotLight(0xb4dcff, 4.4, 14, Math.PI * 0.22, 0.78, 1.7);
   heroSpot.position.set(4.5, 9.5, 4.5);
   heroSpot.target = heroTarget;
   heroSpot.castShadow = false;
