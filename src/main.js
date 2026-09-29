@@ -54,7 +54,7 @@ async function boot() {
   cameraRig.snapTo(playerPosition);
 
   const effects = new EffectSystem(scene, cameraRig);
-  const combat = new CombatSystem({ player: knight, enemy: guardian, effects });
+  const combat = new CombatSystem({ player: knight, enemy: guardian, effects, destructibles: world.getDestructibles() });
   const director = new GameDirector({
     input,
     hud,
@@ -70,7 +70,7 @@ async function boot() {
     scene,
     cameraRig,
     mount,
-    internalHeight: 420,
+    internalHeight: 480,
   });
 
   const artDirection = new ArtDirectionController(scene, { enemy: guardian, world });
