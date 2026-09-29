@@ -1,5 +1,7 @@
 import * as THREE from "three";
-import { getGuardianSpriteTexture, makeBillboard } from "../graphics/PixelSpriteFactory.js";
+import { makeBillboard } from "../graphics/PixelSpriteFactory.js";
+import { getGuardianPixelTexture, getGuardianAnimationFrame, guardianDirectionFromFacing } from "../graphics/GuardianPixelArt.js";
+import { createGuardianMarker } from "../graphics/GuardianMarkerArt.js";
 import { isoRenderOrder } from "../graphics/IsoDepth.js";
 
 function damp(current, target, lambda, dt) {
@@ -35,6 +37,8 @@ export class CorruptedGuardian {
     this.knockback = new THREE.Vector3();
     this.toPlayer = new THREE.Vector3();
     this.hovered = false;
+    this.phaseVisualTime = 0;
+    this.deathVisualTime = 0;
 
     const character = this.physics.createCharacterCapsule({
       x: spawn.x,
@@ -54,9 +58,15 @@ export class CorruptedGuardian {
     this._buildModel();
     this.model.visible = false;
     this.shadowDisc.visible = false;
-    this.pixelSprite = makeBillboard(getGuardianSpriteTexture("idle", "front", 0), 2.35, 2.62, { renderOrder: 5 });
-    this.pixelSprite.position.y = 0.01;
+    this.pixelSprite = makeBillboard(getGuardianPixelTexture("idle", "south", 0, false), 2.0, 2.36, { renderOrder: 5 });
+    this.pixelSprite.position.y = 0.012;
     this.root.add(this.pixelSprite);
+
+    this.selectionRing.visible = false;
+    this.pixelSelectionMarker = createGuardianMarker("boss", 1.65);
+    this.pixelSelectionMarker.renderOrder = isoRenderOrder(0, 0, 0, -13);
+    this.root.add(this.pixelSelectionMarker);
+
     this._pixelState = "";
     this._pixelDirection = "";
     this._pixelFrame = -1;
@@ -215,6 +225,7 @@ export class CorruptedGuardian {
 
     if (!this.phaseTwo && this.health <= this.maxHealth * 0.48) {
       this.phaseTwo = true;
+      this.phaseVisualTime = 0.82;
       this.attackCooldownTime = Math.min(this.attackCooldownTime, 0.2);
       this.audio.playEnemyPhase();
     }
@@ -224,7 +235,11 @@ export class CorruptedGuardian {
     const distance = this.toPlayer.length();
     if (distance > 0.001) this.toPlayer.multiplyScalar(1 / distance);
 
-    if (this.staggerTime > 0) {
+    this.phaseVisualTime = Math.max(0, this.phaseVisualTime - dt);
+
+    if (this.phaseVisualTime > 0) {
+      this.velocity.multiplyScalar(Math.exp(-14 * dt));
+    } else if (this.staggerTime > 0) {
       this.staggerTime = Math.max(0, this.staggerTime - dt);
       this.velocity.multiplyScalar(Math.exp(-11 * dt));
     } else if (this.attackTime > 0) {
@@ -276,6 +291,7 @@ export class CorruptedGuardian {
 
     if (this.health <= 0) {
       this.dead = true;
+      this.deathVisualTime = 0;
       this.attackTime = 0;
       this.velocity.set(0, 0, 0);
       this.knockback.set(0, 0, 0);
@@ -300,121 +316,92 @@ export class CorruptedGuardian {
   updateVisuals(dt, time) {
     this.syncFromPhysics();
 
-    const speedForSprite = Math.hypot(this.velocity.x, this.velocity.z);
+    const speed = Math.hypot(this.velocity.x, this.velocity.z);
+
+    if (this.dead) this.deathVisualTime = Math.min(1.4, this.deathVisualTime + dt);
+
     let spriteState = "idle";
-    if (this.staggerTime > 0) spriteState = "hurt";
+    if (this.dead) spriteState = "death";
+    else if (this.phaseVisualTime > 0) spriteState = "phase";
+    else if (this.staggerTime > 0) spriteState = "hurt";
     else if (this.attackTime > 0) spriteState = "attack";
-    else if (speedForSprite > 0.18) spriteState = "walk";
+    else if (speed > 0.18) spriteState = "walk";
 
-    let spriteDirection = "front";
-    if (Math.abs(this.facing.x) > Math.abs(this.facing.z) * 0.8) spriteDirection = "side";
-    else if (this.facing.z < 0) spriteDirection = "back";
-    const spriteFrame = Math.floor(time * (this.phaseTwo ? 5 : 3.5)) & 1;
+    const attackDuration = this.attackDuration * (this.phaseTwo ? 0.82 : 1);
+    const attackProgress = this.attackTime > 0
+      ? THREE.MathUtils.clamp(1 - this.attackTime / attackDuration, 0, 0.999)
+      : 0;
+    const hurtProgress = this.staggerTime > 0
+      ? THREE.MathUtils.clamp(1 - this.staggerTime / 0.22, 0, 0.999)
+      : 0;
+    const phaseProgress = this.phaseVisualTime > 0
+      ? THREE.MathUtils.clamp(1 - this.phaseVisualTime / 0.82, 0, 0.999)
+      : 0;
+    const deathProgress = THREE.MathUtils.clamp(this.deathVisualTime / 1.15, 0, 0.999);
 
-    if (spriteState !== this._pixelState || spriteDirection !== this._pixelDirection || spriteFrame !== this._pixelFrame) {
-      this.pixelSprite.material.map = getGuardianSpriteTexture(spriteState, spriteDirection, spriteFrame);
+    const direction = guardianDirectionFromFacing(this.facing);
+    const frame = getGuardianAnimationFrame(spriteState, time, {
+      attackProgress,
+      hurtProgress,
+      phaseProgress,
+      deathProgress,
+    });
+
+    if (
+      spriteState !== this._pixelState ||
+      direction !== this._pixelDirection ||
+      frame !== this._pixelFrame ||
+      this._pixelPhaseTwo !== this.phaseTwo
+    ) {
+      this.pixelSprite.material.map = getGuardianPixelTexture(
+        spriteState,
+        direction,
+        frame,
+        this.phaseTwo,
+      );
       this.pixelSprite.material.needsUpdate = true;
       this._pixelState = spriteState;
-      this._pixelDirection = spriteDirection;
-      this._pixelFrame = spriteFrame;
+      this._pixelDirection = direction;
+      this._pixelFrame = frame;
+      this._pixelPhaseTwo = this.phaseTwo;
     }
 
-    this.pixelSprite.scale.x = (spriteDirection === "side" && this.facing.x < 0) ? -2.35 : 2.35;
-    this.pixelSprite.scale.y = this.dead ? 1.65 : 2.62;
-    this.pixelSprite.material.opacity = this.dead ? 0.42 : 1.0;
-    this.pixelSprite.visible = !this.dead || this.pixelSprite.material.opacity > 0.05;
-    this.pixelSprite.renderOrder = isoRenderOrder(this.root.position.x, this.root.position.z, this.root.position.y, 23);
+    const phaseScale = this.phaseTwo ? 1.045 : 1;
+    this.pixelSprite.scale.set(2.0 * phaseScale, 2.36 * phaseScale, 1);
+    this.pixelSprite.material.opacity = this.dead && deathProgress > 0.94 ? 0.86 : 1;
+    this.pixelSprite.visible = true;
+    this.pixelSprite.renderOrder = isoRenderOrder(
+      this.root.position.x,
+      this.root.position.z,
+      this.root.position.y,
+      23,
+    );
 
-    if (this.facing.lengthSq() > 0.001) {
-      const targetYaw = Math.atan2(-this.facing.x, -this.facing.z);
-      let delta = targetYaw - this.model.rotation.y;
-      delta = Math.atan2(Math.sin(delta), Math.cos(delta));
-      this.model.rotation.y += delta * (1 - Math.exp(-10 * dt));
-    }
+    // Todo el modelo legado queda fuera de la presentación. La lógica y el
+    // collider siguen vivos, pero visualmente el jefe es 100% pixel-art.
+    this.model.visible = false;
+    this.shadowDisc.visible = false;
+    this.weaponTrail.visible = false;
+    this.corruptionLight.intensity = 0;
+    this.selectionRing.visible = false;
 
-    const speed = Math.hypot(this.velocity.x, this.velocity.z);
-    const moveAmount = THREE.MathUtils.clamp(speed / this.phaseTwoSpeed, 0, 1);
-    const idlePulse = Math.sin(time * (this.phaseTwo ? 4.2 : 2.8)) * 0.018;
-    const stride = Math.sin(time * (this.phaseTwo ? 9.0 : 6.8));
+    const pulse = 1 +
+      Math.sin(time * (this.phaseTwo ? 6.6 : 3.4)) * (this.phaseTwo ? 0.055 : 0.025) +
+      (this.hovered ? 0.055 : 0);
 
-    this.leftLeg.rotation.x = stride * 0.42 * moveAmount;
-    this.rightLeg.rotation.x = -stride * 0.42 * moveAmount;
-    this.leftLeg.rotation.z = -0.03 + Math.sin(time * 4.8) * 0.02 * moveAmount;
-    this.rightLeg.rotation.z = 0.03 - Math.sin(time * 4.8) * 0.02 * moveAmount;
-    this.leftArm.rotation.x = -0.18 - stride * 0.08 * moveAmount;
-    this.rightArm.rotation.x = 0.06 + stride * 0.16 * moveAmount;
-    this.leftArm.rotation.z = -0.34 - moveAmount * 0.05;
-    this.model.position.y = idlePulse + Math.abs(Math.sin(time * 5.8)) * 0.026 * moveAmount;
-    this.torso.rotation.x = -0.12 - moveAmount * 0.1 + idlePulse * 0.55;
-    this.torso.rotation.z = Math.sin(time * 2.3) * 0.018;
-    this.head.rotation.x = idlePulse * 0.5;
-    this.head.rotation.z = Math.sin(time * 2.4) * 0.022;
-    this.cape.rotation.x = -0.22 - moveAmount * 0.24 + Math.sin(time * 4.4) * 0.06;
-    this.cape.rotation.z = Math.sin(time * 2.2) * 0.04;
-    this.tatterFrontLeft.rotation.x = -0.18 - moveAmount * 0.16 + Math.sin(time * 5.2) * 0.06;
-    this.tatterFrontRight.rotation.x = -0.22 - moveAmount * 0.2 + Math.sin(time * 5.0 + 1.0) * 0.08;
-
-    let slash = 0;
-    if (this.attackTime > 0) {
-      const progress = 1 - this.attackTime / (this.attackDuration * (this.phaseTwo ? 0.82 : 1));
-      const anticipation = THREE.MathUtils.smoothstep(progress, 0.0, 0.4);
-      slash = Math.sin(THREE.MathUtils.clamp((progress - 0.3) / 0.54, 0, 1) * Math.PI);
-      this.rightArm.rotation.x = -1.0 - anticipation * 0.68 + slash * 2.16;
-      this.rightArm.rotation.z = -0.42 - anticipation * 0.16 - slash * 1.14;
-      this.weapon.rotation.z = -slash * 0.42;
-      this.weapon.rotation.x = -0.08 + slash * 0.08;
-      this.torso.rotation.y = anticipation * 0.32 - slash * 0.58;
-      this.torso.rotation.x = -0.15 + anticipation * 0.06;
-      this.leftArm.rotation.x = -0.22 + slash * 0.14;
-      this.leftClaw.rotation.z = slash * 0.16;
-      this.head.rotation.y = -anticipation * 0.08 + slash * 0.04;
-    } else {
-      this.weapon.rotation.z = damp(this.weapon.rotation.z, 0, 8, dt);
-      this.weapon.rotation.x = damp(this.weapon.rotation.x, 0, 8, dt);
-      this.rightArm.rotation.z = damp(this.rightArm.rotation.z, -0.04, 9, dt);
-      this.torso.rotation.y = damp(this.torso.rotation.y, 0, 9, dt);
-      this.leftClaw.rotation.z = damp(this.leftClaw.rotation.z, 0, 9, dt);
-      this.head.rotation.y = damp(this.head.rotation.y, 0, 9, dt);
-    }
-
-    const phasePulse = this.phaseTwo ? 1 + Math.sin(time * 7.6) * 0.08 : 1 + Math.sin(time * 4.2) * 0.04;
-    this.eyeLeft.scale.setScalar(phasePulse);
-    this.eyeRight.scale.setScalar(phasePulse);
-    this.coreGlow.scale.set(phasePulse, 1 + (phasePulse - 1) * 0.8, phasePulse);
-    this.coreHalo.scale.setScalar(1 + (phasePulse - 1) * 1.24);
-    this.corruptionLight.intensity = (this.phaseTwo ? 1.15 : 0.62) + (phasePulse - 1) * 3.0 + (this.staggerTime > 0 ? 1.9 : 0);
-    this.corruptionLight.distance = this.phaseTwo ? 4.1 : 3.4;
-    this.backSpine.scale.y = 1 + (phasePulse - 1) * 0.7;
-    this.weaponHead.scale.setScalar(1 + (phasePulse - 1) * 0.4);
-
-    for (const shard of this.orbitShards) {
-      const angle = shard.userData.angle + time * (this.phaseTwo ? 1.8 : 1.15);
-      shard.position.set(Math.cos(angle) * 0.36, 0.2 + Math.sin(angle * 1.6) * 0.09, -0.04 + Math.sin(angle) * 0.18);
-      shard.rotation.set(angle * 0.7, angle, 0.4 + Math.sin(angle * 2.1) * 0.34);
-      shard.scale.setScalar(phasePulse * 0.95);
-    }
-
-    this.weaponTrail.visible = slash > 0.03 && !this.dead;
-    this.weaponTrail.material.opacity = slash * (this.phaseTwo ? 0.92 : 0.72);
-    this.weaponTrail.scale.setScalar(1 + slash * 0.18);
-
-    const hoverBoost = this.hovered ? 0.08 : 0.0;
-    const ringPulse = 1.0 + Math.sin(time * (this.phaseTwo ? 6.4 : 3.2)) * (this.phaseTwo ? 0.08 : 0.03) + hoverBoost;
-    this.selectionRing.scale.setScalar(ringPulse);
-    this.selectionRing.material.opacity = this.dead ? 0.0 : (this.hovered ? 0.96 : (this.phaseTwo ? 0.88 : 0.62));
-
-    if (this.staggerTime > 0) {
-      this.model.rotation.z = Math.sin(time * 42) * 0.08;
-      this.head.rotation.z += Math.sin(time * 42) * 0.03;
-    } else if (this.dead) {
-      this.model.rotation.z = damp(this.model.rotation.z, 1.36, 2.8, dt);
-      this.model.position.y = damp(this.model.position.y, -0.12, 2.3, dt);
-      this.model.scale.multiplyScalar(1 - Math.min(0.25 * dt, 0.01));
-      this.shadowDisc.material.opacity = damp(this.shadowDisc.material.opacity, 0.1, 3, dt);
-    } else {
-      this.model.rotation.z = damp(this.model.rotation.z, 0, 10, dt);
-      this.shadowDisc.material.opacity = damp(this.shadowDisc.material.opacity, 0.22 + moveAmount * 0.05, 6, dt);
-    }
+    this.pixelSelectionMarker.visible = !this.dead;
+    this.pixelSelectionMarker.scale.setScalar(pulse);
+    this.pixelSelectionMarker.material.opacity = this.hovered
+      ? 0.98
+      : this.phaseTwo
+        ? 0.84
+        : 0.62;
+    this.pixelSelectionMarker.renderOrder = isoRenderOrder(
+      this.root.position.x,
+      this.root.position.z,
+      this.root.position.y,
+      -13,
+    );
   }
 
   setHovered(flag) {
