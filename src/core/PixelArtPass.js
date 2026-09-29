@@ -9,9 +9,9 @@ const PixelArtShader = {
     lightBands: { value: 9.0 },
     ditherStrength: { value: 0.022 },
     edgeStrength: { value: 0.055 },
-    vignetteStrength: { value: 0.085 },
-    shadowLift: { value: 0.012 },
-    contrast: { value: 1.075 },
+    vignetteStrength: { value: 0.045 },
+    shadowLift: { value: 0.045 },
+    contrast: { value: 1.035 },
     saturation: { value: 0.96 },
     shadowTint: { value: new THREE.Color(0xa9b8c5) },
     midTint: { value: new THREE.Color(0xd0cab9) },
@@ -109,7 +109,7 @@ const PixelArtShader = {
       stylized *= 1.0 - edge * edgeStrength;
 
       vec2 centered = vUv * 2.0 - 1.0;
-      float vignette = smoothstep(0.46, 1.30, dot(centered, centered));
+      float vignette = smoothstep(0.58, 1.42, dot(centered, centered));
       stylized *= 1.0 - vignette * vignetteStrength;
 
       gl_FragColor = vec4(clamp(stylized, 0.0, 1.0), 1.0);
