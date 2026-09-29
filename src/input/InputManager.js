@@ -223,6 +223,15 @@ export class InputManager {
     return this.pointer.hoverActive ? this.pointer.hover : null;
   }
 
+  getPointerRayDistanceTo(position) {
+    if (!this.pointer.hoverActive || !this.raycaster) return Infinity;
+    return this.raycaster.ray.distanceToPoint(position);
+  }
+
+  isPointerOverSphere(position, radius) {
+    return this.getPointerRayDistanceTo(position) <= radius;
+  }
+
   setMoveTarget(position, stopRadius = 0.34) {
     this.pointer.target.x = position.x;
     this.pointer.target.y = position.y ?? 0;
