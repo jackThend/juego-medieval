@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { createRuneTexture } from "./ProceduralTextures.js";
 import { DestructibleProp } from "../entities/DestructibleProp.js";
+import { createGroundPixelTexture, getPropSpriteTexture, makeBillboard, makeGroundPlane } from "./PixelSpriteFactory.js";
 
 function seededRandom(seed = 12345) {
   let s = seed >>> 0;
@@ -51,6 +52,79 @@ export class WorldBuilder {
     this._shrine();
     this._embers();
     this._mistWisps();
+    this._installPixelWorld();
+  }
+
+
+  _installPixelWorld() {
+    const worldMaterials = new Set(Object.values(this.mat));
+    this.scene.traverse((child) => {
+      if ((child.isMesh || child.isInstancedMesh) && worldMaterials.has(child.material)) {
+        child.visible = false;
+      }
+    });
+
+    const groundPixel = makeGroundPlane(createGroundPixelTexture(256), 34);
+    groundPixel.renderOrder = -2;
+    this.scene.add(groundPixel);
+
+    this.pixelProps = [];
+
+    const add = (kind, x, z, width, height, variant = 0, y = 0.01) => {
+      const sprite = makeBillboard(getPropSpriteTexture(kind, variant, 0), width, height, { renderOrder: 1 });
+      sprite.position.set(x, y, z);
+      this.scene.add(sprite);
+      this.pixelProps.push(sprite);
+      return sprite;
+    };
+
+    const trees = [
+      [-14.0, 11.5, 2], [-11.1, 14.0, 1], [-7.8, 14.8, 0],
+      [8.7, 14.4, 1], [12.4, 12.0, 2], [14.2, 7.2, 0],
+      [-14.4, -2.8, 1], [-13.8, -10.7, 0], [-10.0, -13.8, 2],
+      [8.3, -14.2, 1], [12.8, -11.6, 0], [14.2, -5.0, 2],
+    ];
+    trees.forEach(([x,z,v]) => add("tree", x, z, 3.0, 4.5, v));
+
+    [
+      [-7.3, 5.8, 0], [7.2, 4.4, 1], [-6.2, -3.8, 0], [6.4, -7.6, 1],
+    ].forEach(([x,z,v]) => add("arch", x, z, 2.6, 3.2, v));
+
+    [
+      [-3.9, 2.4, 0], [4.1, 2.0, 1], [-4.3, -7.9, 1], [4.4, -8.0, 0],
+      [-6.7, 8.6, 0], [6.7, 8.7, 1],
+    ].forEach(([x,z,v]) => add("pillar", x, z, 1.25, 2.25, v));
+
+    for (let i = 0; i < 18; i += 1) {
+      const row = Math.floor(i / 6);
+      const col = i % 6;
+      add("grave", -12.4 + col * 0.9, -2.0 + row * 1.0, 0.75, 0.95, i & 1);
+    }
+
+    this.pixelBrazierA = add("brazier", -2.2, -8.0, 0.8, 1.0, 0);
+    this.pixelBrazierB = add("brazier", 2.2, -8.0, 0.8, 1.0, 1);
+    this.pixelShrine = add("shrine", 0, -10.5, 2.7, 3.0, 0);
+
+    const grassSpots = [
+      [-5.5,7.8], [5.8,8.1], [-6.8,2.0], [7.1,1.4], [-5.7,-4.8], [5.9,-5.1],
+      [-8.8,-9.0], [8.2,-8.7], [-9.2,11.0], [9.7,10.4], [-11.5,5.2], [11.4,5.8],
+      [-4.5,11.8], [4.1,12.0], [-7.5,-12.0], [7.0,-12.2],
+    ];
+    grassSpots.forEach(([x,z],i)=>add("grass",x,z,0.9,1.0,i&1));
+
+    this.animated.push((time) => {
+      const f = Math.floor(time * 6) & 1;
+      this.pixelBrazierA.material.map = getPropSpriteTexture("brazier",0,f);
+      this.pixelBrazierB.material.map = getPropSpriteTexture("brazier",1,f ^ 1);
+      this.pixelBrazierA.material.needsUpdate = true;
+      this.pixelBrazierB.material.needsUpdate = true;
+
+      if (this.pixelShrine) {
+        const active = this.shrine?.activated ? 1 : 0;
+        this.pixelShrine.material.map = getPropSpriteTexture("shrine",0,active);
+        this.pixelShrine.material.needsUpdate = true;
+      }
+    });
   }
 
   _ground() {
