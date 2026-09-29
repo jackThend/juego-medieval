@@ -1,151 +1,240 @@
 import * as THREE from "three";
+import { isoRenderOrder } from "../graphics/IsoDepth.js";
+import {
+  getSlashFxTexture,
+  getImpactFxTexture,
+  getParticleFxTexture,
+  getSanctumFxTexture,
+} from "../graphics/PixelFxArt.js";
+
+function spriteMaterial(map){
+  return new THREE.SpriteMaterial({
+    map,
+    transparent:true,
+    depthWrite:false,
+    depthTest:false,
+    toneMapped:false,
+    fog:false,
+  });
+}
 
 export class EffectSystem {
-  constructor(scene, cameraRig) {
-    this.scene = scene;
-    this.cameraRig = cameraRig;
-    this.maxParticles = 96;
-    this.cursor = 0;
-    this.shakeTime = 0;
-    this.shakePower = 0;
-    this.baseOffset = cameraRig.offset.clone();
+  constructor(scene,cameraRig){
+    this.scene=scene;
+    this.cameraRig=cameraRig;
+    this.shakeTime=0;
+    this.shakePower=0;
+    this.baseOffset=cameraRig.offset.clone();
 
-    this.positions = new Float32Array(this.maxParticles * 3);
-    this.particles = Array.from({ length: this.maxParticles }, () => ({
-      active: false,
-      life: 0,
-      maxLife: 1,
-      velocity: new THREE.Vector3(),
-    }));
+    this.slashCursor=0;
+    this.slashPool=Array.from({length:10},()=>{
+      const sprite=new THREE.Sprite(spriteMaterial(getSlashFxTexture(false,0)));
+      sprite.visible=false;
+      sprite.scale.set(1.55,1.55,1);
+      sprite.userData.life=0;
+      sprite.userData.maxLife=0.19;
+      sprite.userData.enemy=false;
+      scene.add(sprite);
+      return sprite;
+    });
 
-    for (let i = 0; i < this.maxParticles; i += 1) {
-      this.positions[i * 3 + 1] = -100;
+    this.impactCursor=0;
+    this.impactPool=Array.from({length:14},()=>{
+      const sprite=new THREE.Sprite(spriteMaterial(getImpactFxTexture("steel",0)));
+      sprite.visible=false;
+      sprite.scale.set(0.8,0.8,1);
+      sprite.userData.life=0;
+      sprite.userData.maxLife=0.22;
+      sprite.userData.kind="steel";
+      scene.add(sprite);
+      return sprite;
+    });
+
+    this.particleCursor=0;
+    this.particlePool=Array.from({length:64},(_,i)=>{
+      const sprite=new THREE.Sprite(spriteMaterial(getParticleFxTexture("steel",i%4,0)));
+      sprite.visible=false;
+      sprite.scale.set(0.11,0.11,1);
+      sprite.userData.active=false;
+      sprite.userData.life=0;
+      sprite.userData.maxLife=1;
+      sprite.userData.kind="steel";
+      sprite.userData.variant=i%4;
+      sprite.userData.velocity=new THREE.Vector3();
+      scene.add(sprite);
+      return sprite;
+    });
+
+    this.sanctumPool=Array.from({length:2},()=>{
+      const sprite=new THREE.Sprite(spriteMaterial(getSanctumFxTexture(0)));
+      sprite.visible=false;
+      sprite.scale.set(3.2,3.2,1);
+      sprite.userData.life=0;
+      sprite.userData.maxLife=0.72;
+      scene.add(sprite);
+      return sprite;
+    });
+    this.sanctumCursor=0;
+  }
+
+  _screenAngle(direction){
+    const right=this.cameraRig.groundRight;
+    const forward=this.cameraRig.groundForward;
+    const sx=direction.x*right.x+direction.z*right.y;
+    const sy=-(direction.x*forward.x+direction.z*forward.y)*0.58;
+    return Math.atan2(sy,sx);
+  }
+
+  slash(position,direction,enemy=false){
+    const sprite=this.slashPool[this.slashCursor];
+    this.slashCursor=(this.slashCursor+1)%this.slashPool.length;
+    sprite.visible=true;
+    sprite.userData.life=sprite.userData.maxLife;
+    sprite.userData.enemy=enemy;
+    sprite.position.set(position.x,position.y+0.95,position.z);
+    sprite.scale.setScalar(enemy?1.9:1.55);
+    sprite.material.rotation=this._screenAngle(direction)+(enemy?0.28:-0.12);
+    sprite.material.map=getSlashFxTexture(enemy,0);
+    sprite.material.needsUpdate=true;
+    sprite.renderOrder=isoRenderOrder(position.x,position.z,position.y,42);
+  }
+
+  impact(position,kind="steel",scale=1){
+    const sprite=this.impactPool[this.impactCursor];
+    this.impactCursor=(this.impactCursor+1)%this.impactPool.length;
+    sprite.visible=true;
+    sprite.userData.life=sprite.userData.maxLife;
+    sprite.userData.kind=kind;
+    sprite.position.copy(position);
+    sprite.scale.setScalar(0.78*scale);
+    sprite.material.map=getImpactFxTexture(kind,0);
+    sprite.material.needsUpdate=true;
+    sprite.renderOrder=isoRenderOrder(position.x,position.z,position.y,48);
+  }
+
+  burst(position,direction,amount=10,speed=5,kind="steel"){
+    this.impact(position,kind,kind==="sanctum"?1.5:1);
+
+    const count=Math.min(amount,kind==="sanctum"?22:14);
+    for(let n=0;n<count;n++){
+      const sprite=this.particlePool[this.particleCursor];
+      this.particleCursor=(this.particleCursor+1)%this.particlePool.length;
+      sprite.visible=true;
+      sprite.userData.active=true;
+      sprite.userData.life=0.24+Math.random()*0.24;
+      sprite.userData.maxLife=sprite.userData.life;
+      sprite.userData.kind=kind;
+      sprite.userData.variant=n%4;
+      sprite.userData.velocity.set(
+        direction.x*speed*(0.28+Math.random()*0.28)+(Math.random()-0.5)*1.5,
+        0.35+Math.random()*1.25,
+        direction.z*speed*(0.28+Math.random()*0.28)+(Math.random()-0.5)*1.5,
+      );
+      sprite.position.copy(position);
+      sprite.material.map=getParticleFxTexture(kind,n%4,0);
+      sprite.material.needsUpdate=true;
+      sprite.renderOrder=isoRenderOrder(position.x,position.z,position.y,50);
     }
 
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.BufferAttribute(this.positions, 3));
-    const material = new THREE.PointsMaterial({
-      color: 0xffb05a,
-      size: 0.11,
-      sizeAttenuation: true,
-      transparent: true,
-      opacity: 0.95,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      toneMapped: false,
-    });
-    this.points = new THREE.Points(geometry, material);
-    this.scene.add(this.points);
-
-    this.slashPool = Array.from({ length: 8 }, (_, index) => {
-      const slashMaterial = new THREE.MeshBasicMaterial({
-        color: index % 2 === 0 ? 0xffe3a1 : 0xc7d7e6,
-        transparent: true,
-        opacity: 0,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-        blending: THREE.AdditiveBlending,
-        toneMapped: false,
-      });
-      const slash = new THREE.Mesh(
-        new THREE.RingGeometry(0.58, 1.02, 16, 1, -0.78, 1.56),
-        slashMaterial,
-      );
-      slash.rotation.x = -Math.PI / 2;
-      slash.visible = false;
-      slash.userData.life = 0;
-      slash.userData.maxLife = 0.16;
-      slash.userData.enemy = false;
-      this.scene.add(slash);
-      return slash;
-    });
-    this.slashCursor = 0;
+    if(kind==="sanctum")this.sanctumBurst(position);
   }
 
-  burst(position, direction, amount = 10, speed = 5) {
-    for (let n = 0; n < amount; n += 1) {
-      const index = this.cursor;
-      this.cursor = (this.cursor + 1) % this.maxParticles;
-      const particle = this.particles[index];
-      particle.active = true;
-      particle.life = 0.24 + Math.random() * 0.24;
-      particle.maxLife = particle.life;
-
-      const spread = new THREE.Vector3(
-        (Math.random() - 0.5) * 1.8,
-        0.35 + Math.random() * 1.4,
-        (Math.random() - 0.5) * 1.8,
-      );
-      particle.velocity.copy(direction).multiplyScalar(speed * (0.35 + Math.random() * 0.4)).add(spread);
-
-      this.positions[index * 3 + 0] = position.x;
-      this.positions[index * 3 + 1] = position.y;
-      this.positions[index * 3 + 2] = position.z;
-    }
-    this.points.geometry.attributes.position.needsUpdate = true;
+  sanctumBurst(position){
+    const sprite=this.sanctumPool[this.sanctumCursor];
+    this.sanctumCursor=(this.sanctumCursor+1)%this.sanctumPool.length;
+    sprite.visible=true;
+    sprite.userData.life=sprite.userData.maxLife;
+    sprite.position.set(position.x,position.y+0.9,position.z);
+    sprite.material.map=getSanctumFxTexture(0);
+    sprite.material.needsUpdate=true;
+    sprite.renderOrder=isoRenderOrder(position.x,position.z,position.y,46);
   }
 
-  slash(position, direction, enemy = false) {
-    const slash = this.slashPool[this.slashCursor];
-    this.slashCursor = (this.slashCursor + 1) % this.slashPool.length;
-    slash.visible = true;
-    slash.userData.life = slash.userData.maxLife;
-    slash.userData.enemy = enemy;
-    slash.position.set(position.x, position.y + 0.08, position.z);
-    slash.rotation.set(-Math.PI / 2, 0, Math.atan2(direction.z, direction.x) + (enemy ? 0.18 : -0.18));
-    slash.scale.setScalar(enemy ? 1.24 : 1.0);
-    slash.material.color.setHex(enemy ? 0xff7652 : 0xffe7ad);
-    slash.material.opacity = 0.78;
+  shake(duration=0.12,power=0.1){
+    this.shakeTime=Math.max(this.shakeTime,duration);
+    this.shakePower=Math.max(this.shakePower,power);
   }
 
-  shake(duration = 0.12, power = 0.1) {
-    this.shakeTime = Math.max(this.shakeTime, duration);
-    this.shakePower = Math.max(this.shakePower, power);
-  }
-
-  update(dt) {
-    for (let i = 0; i < this.maxParticles; i += 1) {
-      const particle = this.particles[i];
-      if (!particle.active) continue;
-      particle.life -= dt;
-      if (particle.life <= 0) {
-        particle.active = false;
-        this.positions[i * 3 + 1] = -100;
+  update(dt){
+    for(const sprite of this.slashPool){
+      if(!sprite.visible)continue;
+      sprite.userData.life-=dt;
+      if(sprite.userData.life<=0){
+        sprite.visible=false;
         continue;
       }
-
-      particle.velocity.y -= 12 * dt;
-      this.positions[i * 3 + 0] += particle.velocity.x * dt;
-      this.positions[i * 3 + 1] += particle.velocity.y * dt;
-      this.positions[i * 3 + 2] += particle.velocity.z * dt;
+      const t=1-sprite.userData.life/sprite.userData.maxLife;
+      const frame=Math.min(4,Math.floor(t*5));
+      sprite.material.map=getSlashFxTexture(sprite.userData.enemy,frame);
+      sprite.material.needsUpdate=true;
     }
-    this.points.geometry.attributes.position.needsUpdate = true;
 
-    for (const slash of this.slashPool) {
-      if (!slash.visible) continue;
-      slash.userData.life -= dt;
-      if (slash.userData.life <= 0) {
-        slash.visible = false;
-        slash.material.opacity = 0;
+    for(const sprite of this.impactPool){
+      if(!sprite.visible)continue;
+      sprite.userData.life-=dt;
+      if(sprite.userData.life<=0){
+        sprite.visible=false;
         continue;
       }
-      const t = 1 - slash.userData.life / slash.userData.maxLife;
-      slash.material.opacity = (1 - t) * 0.78;
-      slash.scale.multiplyScalar(1 + dt * 2.4);
-      slash.rotation.z += (slash.userData.enemy ? -1 : 1) * dt * 1.5;
+      const t=1-sprite.userData.life/sprite.userData.maxLife;
+      const frame=Math.min(4,Math.floor(t*5));
+      sprite.material.map=getImpactFxTexture(sprite.userData.kind,frame);
+      sprite.material.needsUpdate=true;
     }
 
-    if (this.shakeTime > 0) {
-      this.shakeTime = Math.max(0, this.shakeTime - dt);
-      const falloff = this.shakeTime > 0 ? this.shakePower : 0;
-      this.cameraRig.offset.copy(this.baseOffset).add(new THREE.Vector3(
-        (Math.random() - 0.5) * falloff,
-        (Math.random() - 0.5) * falloff * 0.65,
-        (Math.random() - 0.5) * falloff,
-      ));
-      this.shakePower *= Math.exp(-8 * dt);
-    } else {
-      this.cameraRig.offset.lerp(this.baseOffset, 1 - Math.exp(-12 * dt));
+    for(const sprite of this.particlePool){
+      if(!sprite.userData.active)continue;
+      sprite.userData.life-=dt;
+      if(sprite.userData.life<=0){
+        sprite.userData.active=false;
+        sprite.visible=false;
+        continue;
+      }
+      sprite.userData.velocity.y-=8.5*dt;
+      sprite.position.addScaledVector(sprite.userData.velocity,dt);
+
+      const t=1-sprite.userData.life/sprite.userData.maxLife;
+      const age=Math.min(2,Math.floor(t*3));
+      sprite.material.map=getParticleFxTexture(
+        sprite.userData.kind,
+        sprite.userData.variant,
+        age,
+      );
+      sprite.material.needsUpdate=true;
+      const s=age===0?0.11:age===1?0.09:0.065;
+      sprite.scale.setScalar(s);
+      sprite.renderOrder=isoRenderOrder(
+        sprite.position.x,
+        sprite.position.z,
+        sprite.position.y,
+        50,
+      );
+    }
+
+    for(const sprite of this.sanctumPool){
+      if(!sprite.visible)continue;
+      sprite.userData.life-=dt;
+      if(sprite.userData.life<=0){
+        sprite.visible=false;
+        continue;
+      }
+      const t=1-sprite.userData.life/sprite.userData.maxLife;
+      const frame=Math.min(7,Math.floor(t*8));
+      sprite.material.map=getSanctumFxTexture(frame);
+      sprite.material.needsUpdate=true;
+    }
+
+    if(this.shakeTime>0){
+      this.shakeTime=Math.max(0,this.shakeTime-dt);
+      const step=Math.max(0.001,this.cameraRig.pixelWorldSize||0.02);
+      const power=this.shakePower;
+      const jx=Math.round(((Math.random()-0.5)*power)/step)*step;
+      const jy=Math.round(((Math.random()-0.5)*power*0.5)/step)*step;
+      const jz=Math.round(((Math.random()-0.5)*power)/step)*step;
+      this.cameraRig.offset.copy(this.baseOffset).add(new THREE.Vector3(jx,jy,jz));
+      this.shakePower*=Math.exp(-9*dt);
+    }else{
+      this.cameraRig.offset.copy(this.baseOffset);
     }
   }
 }

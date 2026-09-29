@@ -32,7 +32,7 @@ export class CombatSystem {
         if (distance <= 1.88 && alignment >= 0.12 && this.enemy.takeDamage(34, this.dir)) {
           landed = true;
           const impact = this.enemyPos.clone().add(new THREE.Vector3(0, 1.1, 0));
-          this.effects.burst(impact, this.dir, 13, 5.6);
+          this.effects.burst(impact, this.dir, 13, 5.6, "corruption");
           this.effects.shake(0.12, 0.09);
         }
       }
@@ -66,7 +66,7 @@ export class CombatSystem {
 
           if (best.takeDamage(34, this.dir)) {
             best.getAimPoint(this.targetPos);
-            this.effects.burst(this.targetPos, this.dir, 9, 4.6);
+            this.effects.burst(this.targetPos, this.dir, 9, 4.6, best.type === "urn" ? "stone" : "wood");
             this.effects.shake(best.dead ? 0.13 : 0.07, best.dead ? 0.11 : 0.055);
           }
         }
@@ -84,7 +84,7 @@ export class CombatSystem {
       if (distance <= 1.75 && alignment >= -0.05) {
         if (this.player.receiveDamage(this.enemy.phaseTwo ? 28 : 23, this.dir)) {
           const impact = this.playerPos.clone().add(new THREE.Vector3(0, 1.0, 0));
-          this.effects.burst(impact, this.dir, 10, 4.6);
+          this.effects.burst(impact, this.dir, 10, 4.6, "steel");
           this.effects.shake(0.16, 0.13);
         }
       }

@@ -2,7 +2,8 @@ import * as THREE from "three";
 import { SANCTUARY_PROPS, PROP_KIND } from "../world/SanctuaryProps.js";
 import { tileToWorld } from "../world/SanctuaryGrid.js";
 import { isoRenderOrder } from "./IsoDepth.js";
-import { getIsoPropTexture, isoPropScale, getLightPoolTexture } from "./IsoPropArt.js";
+import { getIsoPropTexture, isoPropScale } from "./IsoPropArt.js";
+import { getPixelLightPool, getPixelLightHalo } from "./PixelLightArt.js";
 import { DestructibleProp } from "../entities/DestructibleProp.js";
 
 function ambientCollider(entry, world, physics) {
@@ -40,6 +41,8 @@ export class IsoPropRenderer {
     this.animated=[];
     this.destructibles=[];
     this.shrineSprite=null;
+    this.glows=[];
+    this.shrineActive=false;
   }
 
   build() {
@@ -95,26 +98,46 @@ export class IsoPropRenderer {
   }
 
   _addGlow(entry,world,index){
+    const isSanctum=entry.stateful==="shrine"||entry.glow==="warmStrong";
+    const kind=isSanctum?"sanctum":"warm";
     const strong=entry.glow==="warmStrong";
-    const texture=getLightPoolTexture(strong?"strong":"small");
-    const material=new THREE.MeshBasicMaterial({
-      map:texture,
+
+    const groundMaterial=new THREE.MeshBasicMaterial({
+      map:getPixelLightPool(kind,0,false),
       transparent:true,
       depthWrite:false,
       depthTest:false,
-      blending:THREE.AdditiveBlending,
       toneMapped:false,
     });
-    const size=strong?3.6:entry.glow==="warmTiny"?1.55:2.1;
-    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(size,size),material);
-    mesh.rotation.x=-Math.PI/2;
-    mesh.position.set(world.x,0.018,world.z);
-    mesh.renderOrder=isoRenderOrder(world.x,world.z,0,-8);
-    mesh.name="prop-glow-"+index;
-    this.group.add(mesh);
+    const size=strong?3.6:entry.glow==="warmTiny"?1.45:2.0;
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(size,size*0.72),groundMaterial);
+    ground.rotation.x=-Math.PI/2;
+    ground.position.set(world.x,0.018,world.z);
+    ground.renderOrder=isoRenderOrder(world.x,world.z,0,-8);
+    ground.name="pixel-light-pool-"+index;
+    this.group.add(ground);
+
+    const haloMaterial=new THREE.SpriteMaterial({
+      map:getPixelLightHalo(kind,0,false),
+      transparent:true,
+      depthWrite:false,
+      depthTest:false,
+      toneMapped:false,
+      fog:false,
+    });
+    const halo=new THREE.Sprite(haloMaterial);
+    halo.center.set(0.5,0.1);
+    halo.scale.set(strong?2.2:1.2,strong?2.6:1.45,1);
+    halo.position.set(world.x,0.08,world.z);
+    halo.renderOrder=isoRenderOrder(world.x,world.z,0,9);
+    halo.name="pixel-light-halo-"+index;
+    this.group.add(halo);
+
+    this.glows.push({ground,halo,kind,strong,isSanctum});
   }
 
   setShrineActive(active){
+    this.shrineActive=Boolean(active);
     if(!this.shrineSprite) return;
     const entry=this.shrineSprite.userData.prop;
     this.shrineSprite.material.map=getIsoPropTexture(
@@ -127,15 +150,30 @@ export class IsoPropRenderer {
   }
 
   update(time){
-    const frame=Math.floor(time*5)&1;
+    const frame=Math.floor(time*7)&3;
+    const candleFrame=frame&1;
     for(const item of this.animated){
       item.sprite.material.map=getIsoPropTexture(
         item.entry.kind,
         item.entry.variant??0,
         "normal",
-        frame,
+        candleFrame,
       );
       item.sprite.material.needsUpdate=true;
+    }
+
+    for(const glow of this.glows){
+      const active=glow.isSanctum&&this.shrineActive;
+      glow.ground.material.map=getPixelLightPool(glow.kind,frame,active);
+      glow.ground.material.needsUpdate=true;
+      glow.halo.material.map=getPixelLightHalo(glow.kind,frame,active);
+      glow.halo.material.needsUpdate=true;
+      const pulse=1+([0,0.035,0,-0.025][frame]??0);
+      glow.halo.scale.set(
+        (glow.strong?2.2:1.2)*pulse,
+        (glow.strong?2.6:1.45)*pulse,
+        1,
+      );
     }
   }
 }
