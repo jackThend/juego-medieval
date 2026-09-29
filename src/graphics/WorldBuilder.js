@@ -12,16 +12,19 @@ import {
 } from "../world/SanctuaryGrid.js";
 import { IsoTileMapRenderer } from "./IsoTileMapRenderer.js";
 import { IsoArchitectureRenderer } from "./IsoArchitectureRenderer.js";
+import { IsoPropRenderer } from "./IsoPropRenderer.js";
 
 export class WorldBuilder {
-  constructor(scene, physics) {
+  constructor(scene, physics, materials) {
     this.scene = scene;
     this.physics = physics;
+    this.materials = materials;
     this.destructibles = [];
     this.shrinePosition = new THREE.Vector3(SHRINE_POSITION.x, 0, SHRINE_POSITION.z);
     this.shrine = { activated: false };
     this.tileRenderer = null;
     this.architectureRenderer = null;
+    this.propRenderer = null;
     this.tileWorld = new THREE.Vector3();
   }
 
@@ -29,6 +32,8 @@ export class WorldBuilder {
     this._buildPhysicsFoundation();
     this.tileRenderer = new IsoTileMapRenderer(this.scene, SANCTUARY_GRID).build();
     this.architectureRenderer = new IsoArchitectureRenderer(this.scene, this.physics).build();
+    this.propRenderer = new IsoPropRenderer(this.scene, this.physics, this.materials).build();
+    this.destructibles = this.propRenderer.destructibles;
   }
 
   _buildPhysicsFoundation() {
@@ -86,7 +91,11 @@ export class WorldBuilder {
   activateShrine() {
     this.shrine.activated = true;
     this.tileRenderer?.setSanctumActive(true);
+    this.propRenderer?.setShrineActive(true);
   }
 
-  update() {}
+  update(time, dt = 1 / 60) {
+    this.propRenderer?.update(time, dt);
+    this.destructibles.forEach((prop) => prop.update(dt, time));
+  }
 }

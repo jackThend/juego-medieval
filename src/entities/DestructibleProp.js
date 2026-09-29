@@ -1,11 +1,15 @@
 import * as THREE from "three";
-import { getPropSpriteTexture, makeBillboard } from "../graphics/PixelSpriteFactory.js";
+import { makeBillboard } from "../graphics/PixelSpriteFactory.js";
+import { getIsoPropTexture, isoPropScale } from "../graphics/IsoPropArt.js";
+import { PROP_KIND } from "../world/SanctuaryProps.js";
+import { isoRenderOrder } from "../graphics/IsoDepth.js";
 
 export class DestructibleProp {
-  constructor({ scene, materials, position, type = "crate", rotation = 0, health = 52 }) {
+  constructor({ scene, materials, position, type = "crate", rotation = 0, health = 52, variant = 0 }) {
     this.scene = scene;
     this.mat = materials;
     this.type = type;
+    this.variant = variant;
     this.maxHealth = health;
     this.health = health;
     this.dead = false;
@@ -25,11 +29,13 @@ export class DestructibleProp {
     else this._buildCrate();
 
     for (const part of this.parts) part.visible = false;
+    const artKind = type === "urn" ? PROP_KIND.URN : PROP_KIND.CRATE;
+    const [spriteW, spriteH] = isoPropScale(artKind);
     this.pixelSprite = makeBillboard(
-      getPropSpriteTexture(type, 0, 0),
-      type === "urn" ? 0.95 : 1.2,
-      type === "urn" ? 1.05 : 1.15,
-      { renderOrder: 4 },
+      getIsoPropTexture(artKind, variant, "normal", 0),
+      spriteW,
+      spriteH,
+      { renderOrder: isoRenderOrder(position.x, position.z, 0, 22) },
     );
     this.pixelSprite.position.y = 0.01;
     this.root.add(this.pixelSprite);
@@ -116,7 +122,8 @@ export class DestructibleProp {
     this.dead = true;
     this.breakAge = 0;
     this.ring.visible = false;
-    this.pixelSprite.material.map = getPropSpriteTexture(this.type, 0, 1);
+    const artKind = this.type === "urn" ? PROP_KIND.URN : PROP_KIND.CRATE;
+    this.pixelSprite.material.map = getIsoPropTexture(artKind, this.variant, "broken", 0);
     this.pixelSprite.material.needsUpdate = true;
 
     this.parts.forEach((part, index) => {
@@ -149,6 +156,7 @@ export class DestructibleProp {
       } else {
         this.hitLight.intensity *= Math.exp(-18 * dt);
         this.root.scale.lerp(this.unitScale, 1 - Math.exp(-18 * dt));
+      this.pixelSprite.renderOrder = isoRenderOrder(this.root.position.x, this.root.position.z, this.root.position.y, 22);
       }
       return;
     }
