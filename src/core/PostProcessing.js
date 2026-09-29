@@ -13,30 +13,32 @@ export class PostProcessing {
     this.renderPass = new RenderPass(scene, camera);
     this.composer.addPass(this.renderPass);
 
-    // SSAO: da peso a los contactos sin necesidad de hornear mapas externos.
+    // AO sólo para peso de contacto. El antiguo radio grande ensuciaba y hundía
+    // los medios tonos al mezclarse con sombras reales y cuantización.
     this.ssaoPass = new SSAOPass(scene, camera, width, height);
-    this.ssaoPass.kernelRadius = 7;
-    this.ssaoPass.minDistance = 0.003;
-    this.ssaoPass.maxDistance = 0.15;
+    this.ssaoPass.kernelRadius = 3;
+    this.ssaoPass.minDistance = 0.006;
+    this.ssaoPass.maxDistance = 0.065;
     this.composer.addPass(this.ssaoPass);
 
-    // Bloom discreto: sólo las superficies realmente emisivas deben respirar luz.
+    // Bloom contenido: conserva antorchas/núcleos sin velar toda la escena.
     this.bloomPass = new UnrealBloomPass(
       new THREE.Vector2(width, height),
-      0.24,
-      0.25,
-      0.90,
+      0.17,
+      0.20,
+      0.92,
     );
     this.composer.addPass(this.bloomPass);
 
-    // Convierte la iluminación continua en bandas de color con dithering Bayer.
-    // Al operar sobre la imagen completa, cuantiza también sombras, AO y niebla.
-    this.pixelPass = new PixelArtPass(width, height);
-    this.composer.addPass(this.pixelPass);
-
-    // El OutputPass conserva el tone mapping y la conversión al espacio de salida.
+    // Primero llevamos la imagen HDR/lineal a una imagen display-referred:
+    // tone mapping + conversión a sRGB.
     this.outputPass = new OutputPass();
     this.composer.addPass(this.outputPass);
+
+    // El pixelado trabaja ahora sobre la imagen final sRGB. Así no destruye
+    // información de sombra antes de que el tone mapper pueda comprimirla.
+    this.pixelPass = new PixelArtPass(width, height);
+    this.composer.addPass(this.pixelPass);
   }
 
   resize(width, height) {

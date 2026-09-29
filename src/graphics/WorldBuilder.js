@@ -117,7 +117,7 @@ export class WorldBuilder {
       dummy.updateMatrix();
       pavers.setMatrixAt(i, dummy.matrix);
     }
-    pavers.castShadow = true;
+    pavers.castShadow = false;
     pavers.receiveShadow = true;
     pavers.instanceMatrix.needsUpdate = true;
     arena.add(pavers);
@@ -448,7 +448,7 @@ export class WorldBuilder {
       dummy.updateMatrix();
       rubble.setMatrixAt(i, dummy.matrix);
     }
-    rubble.castShadow = true;
+    rubble.castShadow = false;
     rubble.receiveShadow = true;
     rubble.instanceMatrix.needsUpdate = true;
     this.scene.add(rubble);
@@ -579,7 +579,7 @@ export class WorldBuilder {
         dummy.updateMatrix();
         mesh.setMatrixAt(i, dummy.matrix);
       }
-      mesh.castShadow = true;
+      mesh.castShadow = false;
       mesh.receiveShadow = false;
       mesh.instanceMatrix.needsUpdate = true;
       this.scene.add(mesh);
@@ -611,7 +611,7 @@ export class WorldBuilder {
       headstones.setMatrixAt(i, dummy.matrix);
     }
 
-    headstones.castShadow = true;
+    headstones.castShadow = false;
     headstones.receiveShadow = true;
     headstones.instanceMatrix.needsUpdate = true;
     this.scene.add(headstones);
@@ -652,7 +652,12 @@ export class WorldBuilder {
         group.add(branch);
       }
       group.position.set(x, 0, z);
-      shadowify(group);
+      group.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = false;
+          child.receiveShadow = true;
+        }
+      });
       this.scene.add(group);
     });
   }
@@ -671,7 +676,12 @@ export class WorldBuilder {
       ember.position.y = 0.78;
       ember.scale.set(1.0, 0.72, 1.0);
       group.add(base, bowl, ember);
-      shadowify(group);
+      group.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = false;
+          child.receiveShadow = true;
+        }
+      });
       this.scene.add(group);
 
       const light = new THREE.PointLight(0xff7a2e, 2.8, 3.8, 2.2);

@@ -5,17 +5,16 @@ const PixelArtShader = {
   uniforms: {
     tDiffuse: { value: null },
     resolution: { value: new THREE.Vector2(640, 360) },
-    colorLevels: { value: 40.0 },
-    lightBands: { value: 9.0 },
-    ditherStrength: { value: 0.022 },
-    edgeStrength: { value: 0.055 },
-    vignetteStrength: { value: 0.045 },
-    shadowLift: { value: 0.045 },
-    contrast: { value: 1.035 },
-    saturation: { value: 0.96 },
-    shadowTint: { value: new THREE.Color(0xa9b8c5) },
-    midTint: { value: new THREE.Color(0xd0cab9) },
-    highlightTint: { value: new THREE.Color(0xffe9c8) },
+    colorLevels: { value: 56.0 },
+    lightBands: { value: 14.0 },
+    ditherStrength: { value: 0.010 },
+    edgeStrength: { value: 0.026 },
+    vignetteStrength: { value: 0.012 },
+    shadowLift: { value: 0.026 },
+    saturation: { value: 0.99 },
+    shadowTint: { value: new THREE.Color(0x9db4bd) },
+    midTint: { value: new THREE.Color(0xc9c8b8) },
+    highlightTint: { value: new THREE.Color(0xf5e4c5) },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -33,7 +32,6 @@ const PixelArtShader = {
     uniform float edgeStrength;
     uniform float vignetteStrength;
     uniform float shadowLift;
-    uniform float contrast;
     uniform float saturation;
     uniform vec3 shadowTint;
     uniform vec3 midTint;
@@ -80,11 +78,13 @@ const PixelArtShader = {
 
     void main() {
       vec2 texel = 1.0 / resolution;
-      vec3 c = texture2D(tDiffuse, vUv).rgb;
+      vec3 c = clamp(texture2D(tDiffuse, vUv).rgb, 0.0, 1.0);
 
-      c = max(c - vec3(0.006), 0.0);
-      c = (c - 0.5) * contrast + 0.5;
-      c += vec3(shadowLift);
+      // Recupera información sólo en las sombras profundas. Como la entrada ya
+      // está tone-mapped/sRGB, este lift es perceptual y no lava los highlights.
+      float originalLuma = luma(c);
+      float shadowMask = 1.0 - smoothstep(0.08, 0.43, originalLuma);
+      c += shadowTint * shadowLift * shadowMask;
       c = clamp(c, 0.0, 1.0);
 
       float lc = luma(c);
@@ -94,22 +94,27 @@ const PixelArtShader = {
       float ld = luma(texture2D(tDiffuse, vUv + vec2(0.0,-texel.y)).rgb);
 
       float edge = abs(lc - ll) + abs(lc - lr) + abs(lc - lu) + abs(lc - ld);
-      edge = smoothstep(0.1, 0.36, edge);
+      edge = smoothstep(0.16, 0.48, edge);
 
+      // Cuantizamos luminancia antes que RGB para preservar color y materiales.
       float threshold = (bayer4(gl_FragCoord.xy) - 0.5) * ditherStrength;
-      float bandValue = clamp(lc + threshold, 0.0, 1.0);
-      bandValue = floor(bandValue * lightBands) / max(lightBands - 1.0, 1.0);
+      float quantizedLuma = floor(
+        clamp(lc + threshold, 0.0, 1.0) * (lightBands - 1.0) + 0.5
+      ) / max(lightBands - 1.0, 1.0);
 
-      vec3 tint = mix(shadowTint, midTint, smoothstep(0.0, 0.58, bandValue));
-      tint = mix(tint, highlightTint, smoothstep(0.58, 1.0, bandValue));
+      float ratio = clamp(quantizedLuma / max(lc, 0.055), 0.78, 1.24);
+      vec3 stylized = mix(c, c * ratio, 0.40);
 
-      vec3 stylized = c * mix(vec3(1.0), tint, 0.11);
+      vec3 tint = mix(shadowTint, midTint, smoothstep(0.04, 0.58, quantizedLuma));
+      tint = mix(tint, highlightTint, smoothstep(0.58, 0.98, quantizedLuma));
+      stylized = mix(stylized, stylized * tint, 0.055);
+
       stylized = applySaturation(stylized, saturation);
       stylized = floor(stylized * colorLevels + 0.5) / colorLevels;
       stylized *= 1.0 - edge * edgeStrength;
 
       vec2 centered = vUv * 2.0 - 1.0;
-      float vignette = smoothstep(0.58, 1.42, dot(centered, centered));
+      float vignette = smoothstep(0.78, 1.58, dot(centered, centered));
       stylized *= 1.0 - vignette * vignetteStrength;
 
       gl_FragColor = vec4(clamp(stylized, 0.0, 1.0), 1.0);
