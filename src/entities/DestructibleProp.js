@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { getPropSpriteTexture, makeBillboard } from "../graphics/PixelSpriteFactory.js";
 
 export class DestructibleProp {
   constructor({ scene, materials, position, type = "crate", rotation = 0, health = 52 }) {
@@ -22,6 +23,16 @@ export class DestructibleProp {
 
     if (type === "urn") this._buildUrn();
     else this._buildCrate();
+
+    for (const part of this.parts) part.visible = false;
+    this.pixelSprite = makeBillboard(
+      getPropSpriteTexture(type, 0, 0),
+      type === "urn" ? 0.95 : 1.2,
+      type === "urn" ? 1.05 : 1.15,
+      { renderOrder: 4 },
+    );
+    this.pixelSprite.position.y = 0.01;
+    this.root.add(this.pixelSprite);
 
     this.ring = new THREE.Mesh(
       new THREE.RingGeometry(type === "urn" ? 0.38 : 0.48, type === "urn" ? 0.48 : 0.60, 20),
@@ -105,6 +116,8 @@ export class DestructibleProp {
     this.dead = true;
     this.breakAge = 0;
     this.ring.visible = false;
+    this.pixelSprite.material.map = getPropSpriteTexture(this.type, 0, 1);
+    this.pixelSprite.material.needsUpdate = true;
 
     this.parts.forEach((part, index) => {
       const angle = (index / Math.max(1, this.parts.length)) * Math.PI * 2;
@@ -142,6 +155,8 @@ export class DestructibleProp {
 
     this.breakAge += dt;
     this.hitLight.intensity *= Math.exp(-10 * dt);
+
+    this.pixelSprite.material.opacity = Math.max(0, 1 - Math.max(0, this.breakAge - 0.58) / 0.62);
 
     for (const part of this.parts) {
       const velocity = part.userData.velocity;
