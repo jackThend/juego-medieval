@@ -75,7 +75,8 @@ export function createGameScene() {
   rim.position.set(9, 10, -12);
   scene.add(rim);
 
-  const ambient = new THREE.AmbientLight(0x1d2a24, 0.12);\n  scene.add(ambient);
+  const ambient = new THREE.AmbientLight(0x1d2a24, 0.12);
+  scene.add(ambient);
 
   const heroTarget = new THREE.Object3D();
   scene.add(heroTarget);
