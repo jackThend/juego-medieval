@@ -1,15 +1,18 @@
 import * as THREE from "three";
 
 export class CameraRig {
-  constructor({ aspect = 16 / 9, viewHeight = 7.0 } = {}) {
+  constructor({ aspect = 16 / 9, viewHeight = 9.4 } = {}) {
     this.viewHeight = viewHeight;
     this.camera = new THREE.OrthographicCamera();
     this.target = new THREE.Vector3();
     this.smoothedTarget = new THREE.Vector3();
     this.focus = new THREE.Vector3();
-    this.offset = new THREE.Vector3(6.5, 8.0, 6.5);
-    this.lookHeight = 1.04;
-    this.damping = 8.0;
+
+    // 45° de yaw + 30° de elevación: una celda cuadrada del plano XZ se
+    // proyecta como el diamante 2:1 clásico del pixel-art isométrico.
+    this.offset = new THREE.Vector3(7.5, 6.124, 7.5);
+    this.lookHeight = 0.72;
+    this.damping = 9.0;
     this.pixelWorldSize = 0;
 
     const groundForward = new THREE.Vector2(this.offset.x, this.offset.z).normalize();
@@ -51,14 +54,15 @@ export class CameraRig {
     this.focus.copy(this.smoothedTarget);
     this.focus.y += this.lookHeight;
 
-    // Pixel snapping en el plano del suelo: reduce el shimmer sub-píxel típico
-    // de cámaras ortográficas que siguen suavemente un objetivo.
     if (this.pixelWorldSize > 0) {
       const x = this.focus.x;
       const z = this.focus.z;
       const u = x * this.groundRight.x + z * this.groundRight.y;
       const v = x * this.groundForward.x + z * this.groundForward.y;
-      const step = this.pixelWorldSize * 0.58;
+
+      // Snapping a píxel real del render interno. Evita shimmer al desplazar
+      // un tileset con NearestFilter.
+      const step = this.pixelWorldSize;
       const su = Math.round(u / step) * step;
       const sv = Math.round(v / step) * step;
       this.focus.x = su * this.groundRight.x + sv * this.groundForward.x;
