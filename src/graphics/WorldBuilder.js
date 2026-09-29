@@ -498,7 +498,12 @@ export class WorldBuilder {
         group.add(crown);
       }
 
-      shadowify(group);
+      group.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = false;
+          child.receiveShadow = true;
+        }
+      });
       this.scene.add(group);
     });
 
@@ -521,7 +526,12 @@ export class WorldBuilder {
       }
       fern.position.set(x, 0, z);
       fern.rotation.y = index * 0.67;
-      shadowify(fern);
+      fern.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = false;
+          child.receiveShadow = true;
+        }
+      });
       this.scene.add(fern);
     });
   }
