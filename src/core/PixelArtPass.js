@@ -5,17 +5,17 @@ const PixelArtShader = {
   uniforms: {
     tDiffuse: { value: null },
     resolution: { value: new THREE.Vector2(640, 360) },
-    colorLevels: { value: 28.0 },
-    lightBands: { value: 7.0 },
-    ditherStrength: { value: 0.05 },
-    edgeStrength: { value: 0.09 },
-    vignetteStrength: { value: 0.035 },
-    shadowLift: { value: 0.035 },
-    contrast: { value: 1.02 },
-    saturation: { value: 0.98 },
-    shadowTint: { value: new THREE.Color(0xc1b9ad) },
-    midTint: { value: new THREE.Color(0xe2d7be) },
-    highlightTint: { value: new THREE.Color(0xfff2d3) },
+    colorLevels: { value: 40.0 },
+    lightBands: { value: 9.0 },
+    ditherStrength: { value: 0.022 },
+    edgeStrength: { value: 0.055 },
+    vignetteStrength: { value: 0.085 },
+    shadowLift: { value: 0.012 },
+    contrast: { value: 1.075 },
+    saturation: { value: 0.96 },
+    shadowTint: { value: new THREE.Color(0xa9b8c5) },
+    midTint: { value: new THREE.Color(0xd0cab9) },
+    highlightTint: { value: new THREE.Color(0xffe9c8) },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -82,6 +82,7 @@ const PixelArtShader = {
       vec2 texel = 1.0 / resolution;
       vec3 c = texture2D(tDiffuse, vUv).rgb;
 
+      c = max(c - vec3(0.006), 0.0);
       c = (c - 0.5) * contrast + 0.5;
       c += vec3(shadowLift);
       c = clamp(c, 0.0, 1.0);
@@ -102,13 +103,13 @@ const PixelArtShader = {
       vec3 tint = mix(shadowTint, midTint, smoothstep(0.0, 0.58, bandValue));
       tint = mix(tint, highlightTint, smoothstep(0.58, 1.0, bandValue));
 
-      vec3 stylized = c * mix(vec3(1.0), tint, 0.24);
+      vec3 stylized = c * mix(vec3(1.0), tint, 0.11);
       stylized = applySaturation(stylized, saturation);
       stylized = floor(stylized * colorLevels + 0.5) / colorLevels;
       stylized *= 1.0 - edge * edgeStrength;
 
       vec2 centered = vUv * 2.0 - 1.0;
-      float vignette = smoothstep(0.52, 1.34, dot(centered, centered));
+      float vignette = smoothstep(0.46, 1.30, dot(centered, centered));
       stylized *= 1.0 - vignette * vignetteStrength;
 
       gl_FragColor = vec4(clamp(stylized, 0.0, 1.0), 1.0);
