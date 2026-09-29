@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { createRuneTexture } from "./ProceduralTextures.js";
+import { DestructibleProp } from "../entities/DestructibleProp.js";
 
 function seededRandom(seed = 12345) {
   let s = seed >>> 0;
@@ -28,6 +29,7 @@ export class WorldBuilder {
     this.animated = [];
     this.deltaTime = 0;
     this.shrine = null;
+    this.destructibles = [];
     this.shrinePosition = new THREE.Vector3(0, 0, -10.5);
   }
 
@@ -36,10 +38,12 @@ export class WorldBuilder {
     this._paths();
     this._arena();
     this._handcraftedComposition();
+    this._forestFrame();
     this._ruins();
     this._processionalMarkers();
     this._sanctumBackdrop();
     this._rubble();
+    this._destructibles();
     this._grass();
     this._graveyard();
     this._deadTrees();
@@ -450,8 +454,100 @@ export class WorldBuilder {
     this.scene.add(rubble);
   }
 
+  _forestFrame() {
+    const treePositions = [
+      [-14.2, 11.8, 6.8, 0.12], [-11.4, 14.2, 7.4, -0.1], [-7.8, 15.0, 6.2, 0.08],
+      [8.8, 14.6, 7.0, -0.08], [12.6, 12.2, 7.8, 0.12], [14.4, 7.2, 6.6, -0.12],
+      [-14.6, -2.8, 7.3, 0.1], [-14.0, -10.8, 6.8, -0.14], [-10.2, -14.0, 7.5, 0.08],
+      [8.4, -14.4, 7.2, -0.08], [13.0, -11.8, 7.8, 0.1], [14.4, -5.0, 6.9, -0.1],
+    ];
+
+    const trunkGeo = new THREE.CylinderGeometry(0.24, 0.38, 1, 7);
+    const branchGeo = new THREE.CylinderGeometry(0.08, 0.14, 1.5, 6);
+    const crownGeo = new THREE.DodecahedronGeometry(0.9, 0);
+
+    treePositions.forEach(([x, z, height, lean], treeIndex) => {
+      const group = new THREE.Group();
+      group.position.set(x, 0, z);
+
+      const trunk = new THREE.Mesh(trunkGeo, this.mat.barkDark);
+      trunk.scale.y = height;
+      trunk.position.y = height * 0.5;
+      trunk.rotation.z = lean;
+      group.add(trunk);
+
+      for (let b = 0; b < 3; b += 1) {
+        const branch = new THREE.Mesh(branchGeo, this.mat.barkDark);
+        branch.position.set((b % 2 ? -1 : 1) * (0.35 + b * 0.08), height * (0.52 + b * 0.09), (b - 1) * 0.18);
+        branch.rotation.z = (b % 2 ? 1 : -1) * (0.7 + b * 0.09);
+        branch.rotation.y = b * 0.8 + treeIndex * 0.21;
+        group.add(branch);
+      }
+
+      for (let c = 0; c < 5; c += 1) {
+        const crown = new THREE.Mesh(crownGeo, c % 3 === 0 ? this.mat.foliageMid : this.mat.foliageDark);
+        const angle = (c / 5) * Math.PI * 2 + treeIndex * 0.31;
+        crown.position.set(
+          Math.cos(angle) * (0.45 + (c % 2) * 0.34),
+          height * 0.72 + (c % 3) * 0.62,
+          Math.sin(angle) * (0.45 + ((c + 1) % 2) * 0.34),
+        );
+        const s = 0.75 + (c % 3) * 0.18;
+        crown.scale.set(s * 1.25, s * 0.9, s * 1.15);
+        crown.rotation.set(c * 0.22, angle, c * 0.16);
+        group.add(crown);
+      }
+
+      shadowify(group);
+      this.scene.add(group);
+    });
+
+    const fernGeo = new THREE.ConeGeometry(0.12, 0.68, 4);
+    const fernPositions = [
+      [-5.5, 7.8], [5.8, 8.1], [-6.8, 2.0], [7.1, 1.4], [-5.7, -4.8], [5.9, -5.1],
+      [-8.8, -9.0], [8.2, -8.7], [-9.2, 11.0], [9.7, 10.4],
+    ];
+
+    fernPositions.forEach(([x, z], index) => {
+      const fern = new THREE.Group();
+      for (let i = 0; i < 6; i += 1) {
+        const leaf = new THREE.Mesh(fernGeo, i % 2 ? this.mat.foliageMid : this.mat.moss);
+        const angle = (i / 6) * Math.PI * 2;
+        leaf.position.set(Math.cos(angle) * 0.18, 0.26, Math.sin(angle) * 0.18);
+        leaf.rotation.z = 0.68;
+        leaf.rotation.y = -angle;
+        leaf.scale.set(0.65, 0.8 + (i % 3) * 0.16, 0.42);
+        fern.add(leaf);
+      }
+      fern.position.set(x, 0, z);
+      fern.rotation.y = index * 0.67;
+      shadowify(fern);
+      this.scene.add(fern);
+    });
+  }
+
+  _destructibles() {
+    const placements = [
+      { type: "crate", x: -3.1, z: 5.5, r: 0.16, health: 48 },
+      { type: "urn", x: 3.3, z: 3.3, r: -0.2, health: 42 },
+      { type: "crate", x: 4.0, z: -1.8, r: 0.36, health: 52 },
+      { type: "urn", x: -3.7, z: -3.5, r: 0.08, health: 42 },
+      { type: "crate", x: -4.6, z: -7.1, r: -0.28, health: 56 },
+      { type: "urn", x: 3.4, z: -7.8, r: 0.2, health: 46 },
+    ];
+
+    this.destructibles = placements.map((entry) => new DestructibleProp({
+      scene: this.scene,
+      materials: this.mat,
+      position: new THREE.Vector3(entry.x, 0, entry.z),
+      type: entry.type,
+      rotation: entry.r,
+      health: entry.health,
+    }));
+  }
+
   _grass() {
-    const count = 210;
+    const count = 280;
     const geo = new THREE.ConeGeometry(0.11, 0.45, 4);
     const grass = new THREE.InstancedMesh(geo, this.mat.grass, count);
     const dry = new THREE.InstancedMesh(geo, this.mat.grassDry, Math.floor(count * 0.35));
@@ -568,14 +664,14 @@ export class WorldBuilder {
       shadowify(group);
       this.scene.add(group);
 
-      const light = new THREE.PointLight(0xff7a2e, 4.2, 4.2, 2.2);
+      const light = new THREE.PointLight(0xff7a2e, 2.8, 3.8, 2.2);
       light.position.set(x, 1.0, z);
       this.scene.add(light);
 
       this.animated.push((time) => {
         const pulse = 0.88 + Math.sin(time * 7.1 + index * 1.7) * 0.12;
         ember.scale.set(1.0, 0.72 * pulse, 1.0);
-        light.intensity = 3.5 + Math.sin(time * 8.3 + index) * 0.65;
+        light.intensity = 2.35 + Math.sin(time * 8.3 + index) * 0.42;
       });
     });
   }
@@ -716,6 +812,10 @@ export class WorldBuilder {
     });
   }
 
+  getDestructibles() {
+    return this.destructibles;
+  }
+
   getShrinePosition(target = new THREE.Vector3()) {
     return target.copy(this.shrinePosition);
   }
@@ -727,5 +827,6 @@ export class WorldBuilder {
   update(time, dt = 1 / 60) {
     this.deltaTime = dt;
     this.animated.forEach((fn) => fn(time));
+    this.destructibles.forEach((prop) => prop.update(dt, time));
   }
 }
