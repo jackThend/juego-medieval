@@ -7,9 +7,9 @@ function createSkyDome() {
     depthWrite: false,
     fog: false,
     uniforms: {
-      topColor: { value: new THREE.Color(0x4a5575) },
-      horizonColor: { value: new THREE.Color(0x8a7458) },
-      bottomColor: { value: new THREE.Color(0x39382a) },
+      topColor: { value: new THREE.Color(0x0d1622) },
+      horizonColor: { value: new THREE.Color(0x182720) },
+      bottomColor: { value: new THREE.Color(0x080d0c) },
     },
     vertexShader: /* glsl */ `
       varying vec3 vWorldPosition;
@@ -49,12 +49,12 @@ function createSkyDome() {
 
 export function createGameScene() {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x3a392f);
-  scene.fog = new THREE.FogExp2(0x48463e, 0.020);
+  scene.background = new THREE.Color(0x090e0d);
+  scene.fog = new THREE.FogExp2(0x111a17, 0.027);
   const sky = createSkyDome();
   scene.add(sky);
 
-  const key = new THREE.DirectionalLight(0xffddb8, 2.95);
+  const key = new THREE.DirectionalLight(0x9fc6ee, 1.55);
   key.position.set(-8, 13, 7);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -68,19 +68,31 @@ export function createGameScene() {
   key.shadow.normalBias = 0.035;
   scene.add(key);
 
-  const fill = new THREE.HemisphereLight(0xc5c2bb, 0x7f6f58, 2.0);
+  const fill = new THREE.HemisphereLight(0x55738a, 0x121812, 0.62);
   scene.add(fill);
 
-  const rim = new THREE.DirectionalLight(0xa2acc0, 2.3);
+  const rim = new THREE.DirectionalLight(0x7eaee1, 1.65);
   rim.position.set(9, 10, -12);
   scene.add(rim);
 
-  scene.add(new THREE.AmbientLight(0x4b5448, 0.24));
+  const ambient = new THREE.AmbientLight(0x1d2a24, 0.12);\n  scene.add(ambient);
+
+  const heroTarget = new THREE.Object3D();
+  scene.add(heroTarget);
+
+  const heroSpot = new THREE.SpotLight(0xa9d5ff, 3.5, 13, Math.PI * 0.22, 0.78, 1.7);
+  heroSpot.position.set(4.5, 9.5, 4.5);
+  heroSpot.target = heroTarget;
+  heroSpot.castShadow = false;
+  scene.add(heroSpot);
 
   scene.userData.artDirection = {
     key,
     fill,
     rim,
+    ambient,
+    heroSpot,
+    heroTarget,
     skyMaterial: sky.material,
   };
 
