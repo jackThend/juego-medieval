@@ -15,17 +15,17 @@ export class PostProcessing {
 
     // SSAO: da peso a los contactos sin necesidad de hornear mapas externos.
     this.ssaoPass = new SSAOPass(scene, camera, width, height);
-    this.ssaoPass.kernelRadius = 5;
-    this.ssaoPass.minDistance = 0.004;
-    this.ssaoPass.maxDistance = 0.11;
+    this.ssaoPass.kernelRadius = 7;
+    this.ssaoPass.minDistance = 0.003;
+    this.ssaoPass.maxDistance = 0.15;
     this.composer.addPass(this.ssaoPass);
 
     // Bloom discreto: sólo las superficies realmente emisivas deben respirar luz.
     this.bloomPass = new UnrealBloomPass(
       new THREE.Vector2(width, height),
-      0.30,
-      0.28,
-      0.86,
+      0.24,
+      0.25,
+      0.90,
     );
     this.composer.addPass(this.bloomPass);
 
