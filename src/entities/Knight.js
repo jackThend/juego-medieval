@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { getKnightSpriteTexture, makeBillboard } from "../graphics/PixelSpriteFactory.js";
+import { isoRenderOrder } from "../graphics/IsoDepth.js";
 
 function damp(current, target, lambda, dt) {
   return THREE.MathUtils.lerp(current, target, 1 - Math.exp(-lambda * dt));
@@ -370,6 +371,7 @@ export class Knight {
     this.pixelSprite.scale.y = this.dead ? 1.25 : 2.0;
     this.pixelSprite.material.opacity = this.dead ? 0.62 : 1.0;
     this.pixelSprite.visible = true;
+    this.pixelSprite.renderOrder = isoRenderOrder(this.root.position.x, this.root.position.z, this.root.position.y, 24);
 
     const planarSpeed = Math.hypot(this.moveVelocity.x, this.moveVelocity.z);
     const moveAmount = THREE.MathUtils.clamp(planarSpeed / this.runSpeed, 0, 1);

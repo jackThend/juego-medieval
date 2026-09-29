@@ -447,13 +447,13 @@ export function createGroundPixelTexture(size=256) {
   });
 }
 
-export function makeBillboard(texture,width,height,{opacity=1,depthWrite=true,renderOrder=0}={}) {
+export function makeBillboard(texture,width,height,{opacity=1,depthWrite=false,depthTest=false,renderOrder=0}={}) {
   const material=new THREE.SpriteMaterial({
     map:texture,
     transparent:true,
     alphaTest:0.08,
     depthWrite,
-    depthTest:true,
+    depthTest,
     opacity,
     fog:true,
     toneMapped:false,

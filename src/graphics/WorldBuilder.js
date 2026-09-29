@@ -11,6 +11,7 @@ import {
   worldToTile,
 } from "../world/SanctuaryGrid.js";
 import { IsoTileMapRenderer } from "./IsoTileMapRenderer.js";
+import { IsoArchitectureRenderer } from "./IsoArchitectureRenderer.js";
 
 export class WorldBuilder {
   constructor(scene, physics) {
@@ -20,12 +21,14 @@ export class WorldBuilder {
     this.shrinePosition = new THREE.Vector3(SHRINE_POSITION.x, 0, SHRINE_POSITION.z);
     this.shrine = { activated: false };
     this.tileRenderer = null;
+    this.architectureRenderer = null;
     this.tileWorld = new THREE.Vector3();
   }
 
   build() {
     this._buildPhysicsFoundation();
     this.tileRenderer = new IsoTileMapRenderer(this.scene, SANCTUARY_GRID).build();
+    this.architectureRenderer = new IsoArchitectureRenderer(this.scene, this.physics).build();
   }
 
   _buildPhysicsFoundation() {

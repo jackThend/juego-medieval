@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { getGuardianSpriteTexture, makeBillboard } from "../graphics/PixelSpriteFactory.js";
+import { isoRenderOrder } from "../graphics/IsoDepth.js";
 
 function damp(current, target, lambda, dt) {
   return THREE.MathUtils.lerp(current, target, 1 - Math.exp(-lambda * dt));
@@ -322,6 +323,7 @@ export class CorruptedGuardian {
     this.pixelSprite.scale.y = this.dead ? 1.65 : 2.62;
     this.pixelSprite.material.opacity = this.dead ? 0.42 : 1.0;
     this.pixelSprite.visible = !this.dead || this.pixelSprite.material.opacity > 0.05;
+    this.pixelSprite.renderOrder = isoRenderOrder(this.root.position.x, this.root.position.z, this.root.position.y, 23);
 
     if (this.facing.lengthSq() > 0.001) {
       const targetYaw = Math.atan2(-this.facing.x, -this.facing.z);
