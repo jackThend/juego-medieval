@@ -1,5 +1,7 @@
 import * as THREE from "three";
-import { getKnightSpriteTexture, makeBillboard } from "../graphics/PixelSpriteFactory.js";
+import { makeBillboard } from "../graphics/PixelSpriteFactory.js";
+import { getKnightPixelTexture, getKnightAnimationFrame, knightDirectionFromFacing } from "../graphics/KnightPixelArt.js";
+import { createKnightGroundMarker } from "../graphics/KnightMarkerArt.js";
 import { isoRenderOrder } from "../graphics/IsoDepth.js";
 
 function damp(current, target, lambda, dt) {
@@ -46,6 +48,7 @@ export class Knight {
     this.stepDistance = 0;
     this.moveTargetStopRadius = 0.34;
     this.queuedAttack = false;
+    this.deathVisualTime = 0;
 
     const physicsPlayer = this.physics.createPlayerCapsule({ x: 0, y: 0.74, z: 8.5 });
     this.body = physicsPlayer.body;
@@ -60,8 +63,8 @@ export class Knight {
     this._buildModel();
     this.model.visible = false;
     this.shadowDisc.visible = false;
-    this.pixelSprite = makeBillboard(getKnightSpriteTexture("idle", "front", 0), 1.75, 2.0, { renderOrder: 6 });
-    this.pixelSprite.position.y = 0.02;
+    this.pixelSprite = makeBillboard(getKnightPixelTexture("idle", "south", 0), 1.42, 1.78, { renderOrder: 6 });
+    this.pixelSprite.position.y = 0.018;
     this.root.add(this.pixelSprite);
     this._pixelState = "";
     this._pixelDirection = "";
@@ -204,7 +207,17 @@ export class Knight {
     );
     this.selectionRing.rotation.x = -Math.PI / 2;
     this.selectionRing.position.y = 0.035;
+    this.selectionRing.visible = false;
     this.root.add(this.selectionRing);
+
+    this.pixelSelectionMarker = createKnightGroundMarker("selection", 1.18);
+    this.pixelSelectionMarker.renderOrder = isoRenderOrder(0, 0, 0, -14);
+    this.root.add(this.pixelSelectionMarker);
+
+    this.destinationRing.visible = false;
+    this.pixelDestinationMarker = createKnightGroundMarker("destination", 0.78);
+    this.pixelDestinationMarker.visible = false;
+    this.scene.add(this.pixelDestinationMarker);
 
     this.heroLight = new THREE.PointLight(0x8fb7d4, 0, 2.5, 2.2);
     this.heroLight.position.set(0, 1.42, -0.42);
@@ -327,6 +340,7 @@ export class Knight {
 
     if (this.health <= 0) {
       this.dead = true;
+      this.deathVisualTime = 0;
       this.attackTime = 0;
       this.dashTime = 0;
       this.audio.playDefeat();
@@ -348,142 +362,105 @@ export class Knight {
   updateVisuals(dt, time) {
     this.syncFromPhysics();
 
-    const planarSpeedForSprite = Math.hypot(this.moveVelocity.x, this.moveVelocity.z);
+    const planarSpeed = Math.hypot(this.moveVelocity.x, this.moveVelocity.z);
+    const running = planarSpeed > this.walkSpeed + 0.35;
+
     let spriteState = "idle";
-    if (this.hurtTime > 0) spriteState = "hurt";
+    if (this.dead) spriteState = "death";
+    else if (this.hurtTime > 0) spriteState = "hurt";
     else if (this.attackTime > 0) spriteState = "attack";
-    else if (planarSpeedForSprite > 0.25) spriteState = "walk";
+    else if (this.dashTime > 0) spriteState = "dash";
+    else if (planarSpeed > 0.24) spriteState = running ? "run" : "walk";
 
-    let spriteDirection = "front";
-    if (Math.abs(this.facing.x) > Math.abs(this.facing.z) * 0.8) spriteDirection = "side";
-    else if (this.facing.z < 0) spriteDirection = "back";
-    const spriteFrame = Math.floor(time * (spriteState === "walk" ? 7 : spriteState === "attack" ? 9 : 3)) & 1;
+    if (this.dead) this.deathVisualTime = Math.min(1.0, this.deathVisualTime + dt);
 
-    if (spriteState !== this._pixelState || spriteDirection !== this._pixelDirection || spriteFrame !== this._pixelFrame) {
-      this.pixelSprite.material.map = getKnightSpriteTexture(spriteState, spriteDirection, spriteFrame);
+    const attackProgress = this.attackTime > 0
+      ? THREE.MathUtils.clamp(1 - this.attackTime / this.attackDuration, 0, 0.999)
+      : 0;
+    const hurtProgress = this.hurtTime > 0
+      ? THREE.MathUtils.clamp(1 - this.hurtTime / 0.24, 0, 0.999)
+      : 0;
+    const dashProgress = this.dashTime > 0
+      ? THREE.MathUtils.clamp(1 - this.dashTime / this.dashDuration, 0, 0.999)
+      : 0;
+    const deathProgress = THREE.MathUtils.clamp(this.deathVisualTime / 0.82, 0, 0.999);
+
+    const spriteDirection = knightDirectionFromFacing(this.facing);
+    const spriteFrame = getKnightAnimationFrame(spriteState, time, {
+      attackProgress,
+      hurtProgress,
+      dashProgress,
+      deathProgress,
+    });
+
+    if (
+      spriteState !== this._pixelState ||
+      spriteDirection !== this._pixelDirection ||
+      spriteFrame !== this._pixelFrame
+    ) {
+      this.pixelSprite.material.map = getKnightPixelTexture(spriteState, spriteDirection, spriteFrame);
       this.pixelSprite.material.needsUpdate = true;
       this._pixelState = spriteState;
       this._pixelDirection = spriteDirection;
       this._pixelFrame = spriteFrame;
     }
 
-    this.pixelSprite.scale.x = (spriteDirection === "side" && this.facing.x < 0) ? -1.75 : 1.75;
-    this.pixelSprite.scale.y = this.dead ? 1.25 : 2.0;
-    this.pixelSprite.material.opacity = this.dead ? 0.62 : 1.0;
-    this.pixelSprite.visible = true;
-    this.pixelSprite.renderOrder = isoRenderOrder(this.root.position.x, this.root.position.z, this.root.position.y, 24);
+    // Deliberadamente más pequeño que el sprite anterior: ahora pertenece al
+    // tileset en vez de dominarlo como una figura de juguete.
+    this.pixelSprite.scale.set(1.42, 1.78, 1);
+    this.pixelSprite.material.opacity = this.dead && deathProgress >= 0.96 ? 0.88 : 1.0;
 
-    const planarSpeed = Math.hypot(this.moveVelocity.x, this.moveVelocity.z);
-    const moveAmount = THREE.MathUtils.clamp(planarSpeed / this.runSpeed, 0, 1);
-    const idlePulse = Math.sin(time * 2.4) * 0.016;
-    const idleBreath = Math.sin(time * 1.85) * 0.012;
+    // Hurt flicker afecta al sprite real, no al viejo modelo 3D oculto.
+    const flicker = !this.dead &&
+      this.invulnerabilityTime > 0 &&
+      this.hurtTime > 0.08 &&
+      Math.floor(time * 22) % 2 === 0;
+    this.pixelSprite.visible = !flicker;
+    this.pixelSprite.renderOrder = isoRenderOrder(
+      this.root.position.x,
+      this.root.position.z,
+      this.root.position.y,
+      24,
+    );
 
-    if (this.facing.lengthSq() > 0.001) {
-      const targetYaw = Math.atan2(-this.facing.x, -this.facing.z);
-      let delta = targetYaw - this.model.rotation.y;
-      delta = Math.atan2(Math.sin(delta), Math.cos(delta));
-      this.model.rotation.y += delta * (1 - Math.exp(-14 * dt));
-    }
+    // Mantener el modelo legado totalmente fuera del render. Sólo conserva
+    // referencias internas para evitar alterar gameplay antiguo.
+    this.model.visible = false;
+    this.shadowDisc.visible = false;
+    this.attackTrail.visible = false;
+    this.heroLight.intensity = 0;
 
-    const strideRate = planarSpeed > this.walkSpeed + 0.3 ? 11.6 : 8.4;
-    const stride = Math.sin(time * strideRate);
-    const counterStride = Math.sin(time * strideRate + Math.PI * 0.5);
-    const bob = Math.abs(Math.sin(time * strideRate * 0.95)) * 0.032 * moveAmount;
-    const dashLean = this.dashTime > 0 ? 0.18 : 0;
-
-    this.model.position.y = idlePulse + bob - (this.dashTime > 0 ? 0.06 : 0);
-    this.leftLeg.rotation.x = stride * 0.62 * moveAmount;
-    this.rightLeg.rotation.x = -stride * 0.62 * moveAmount;
-    this.leftLeg.rotation.z = -0.02 + counterStride * 0.03 * moveAmount;
-    this.rightLeg.rotation.z = 0.02 - counterStride * 0.03 * moveAmount;
-    this.leftArm.rotation.x = -stride * 0.28 * moveAmount - 0.14 + dashLean * 0.2;
-    this.rightArm.rotation.x = stride * 0.24 * moveAmount + 0.04 + dashLean;
-    this.leftArm.rotation.z = -0.18 - moveAmount * 0.08;
-    this.torso.rotation.z = Math.sin(time * 4.0) * 0.016 * moveAmount;
-    this.torso.scale.set(1 - idleBreath * 0.18, 1 + idleBreath, 1 - idleBreath * 0.12);
-    this.torso.rotation.x = -moveAmount * 0.1 + dashLean * 0.5;
-    this.head.rotation.z = Math.sin(time * 3.3 + 1.1) * 0.018 * (0.3 + moveAmount);
-    this.head.rotation.x = idlePulse * 0.6 + dashLean * 0.25;
-    this.surcoatFront.rotation.x = -0.08 - moveAmount * 0.18;
-    this.waistClothLeft.rotation.x = -0.16 - moveAmount * 0.2 + Math.sin(time * 5.8 + 0.6) * 0.06;
-    this.waistClothRight.rotation.x = -0.16 - moveAmount * 0.2 + Math.sin(time * 5.8 + 1.2) * 0.06;
-
-    const capeLift = 0.12 + moveAmount * 0.32 + (this.dashTime > 0 ? 0.36 : 0);
-    this.cape.rotation.x = -capeLift + Math.sin(time * 6.2) * (0.04 + moveAmount * 0.03);
-    this.cape.rotation.z = Math.sin(time * 3.3) * 0.026;
-    this.plume.rotation.x = 0.28 + Math.sin(time * 5.4) * 0.06 + moveAmount * 0.08;
-    this.plume.rotation.z = -0.03 + Math.sin(time * 4.0) * 0.03;
-
-    const eyePulse = 1 + Math.sin(time * 5.2) * 0.07;
-    this.visorGlowLeft.scale.setScalar(eyePulse);
-    this.visorGlowRight.scale.setScalar(eyePulse);
-    this.shieldBoss.scale.setScalar(1 + Math.sin(time * 4.6) * 0.03);
-
-    let slash = 0;
-    if (this.attackTime > 0) {
-      const progress = 1 - this.attackTime / this.attackDuration;
-      const anticipation = THREE.MathUtils.smoothstep(progress, 0.0, 0.24);
-      const release = THREE.MathUtils.clamp((progress - 0.18) / 0.56, 0, 1);
-      slash = Math.sin(release * Math.PI);
-      this.rightArm.rotation.z = -0.26 - anticipation * 0.88 - slash * 1.74;
-      this.rightArm.rotation.x = -0.82 - anticipation * 0.42 + slash * 1.0;
-      this.leftArm.rotation.x = -0.22 + slash * 0.24;
-      this.leftArm.rotation.z = -0.24 - anticipation * 0.14;
-      this.swordPivot.rotation.z = -0.12 - slash * 0.56;
-      this.swordPivot.rotation.x = -0.24 + slash * 0.26;
-      this.torso.rotation.y = anticipation * 0.3 - slash * 0.54;
-      this.torso.rotation.x = -0.12 + anticipation * 0.1;
-      this.head.rotation.y = -anticipation * 0.1 + slash * 0.08;
-      this.cape.rotation.z -= slash * 0.13;
-      this.model.position.y -= slash * 0.035;
-    } else {
-      this.rightArm.rotation.z = damp(this.rightArm.rotation.z, -0.08, 12, dt);
-      this.swordPivot.rotation.z = damp(this.swordPivot.rotation.z, 0, 12, dt);
-      this.swordPivot.rotation.x = damp(this.swordPivot.rotation.x, 0, 12, dt);
-      this.torso.rotation.y = damp(this.torso.rotation.y, 0, 12, dt);
-      this.head.rotation.y = damp(this.head.rotation.y, 0, 12, dt);
-    }
-
-    this.attackTrail.visible = slash > 0.03 && !this.dead;
-    this.attackTrail.material.opacity = slash * 0.8;
-    this.attackTrail.scale.setScalar(0.9 + slash * 0.28);
-    this.heroLight.intensity = this.hurtTime > 0 ? 2.5 : slash * 1.65 + (this.dashTime > 0 ? 0.7 : 0.08);
-    this.heroLight.distance = this.hurtTime > 0 ? 3.1 : 2.5;
-
-    if (this.hurtTime > 0) {
-      this.torso.rotation.z += Math.sin(time * 45) * 0.05;
-      this.head.rotation.z += Math.sin(time * 45) * 0.02;
-    }
-
-    if (this.dead) {
-      this.model.rotation.z = damp(this.model.rotation.z, -1.28, 3.7, dt);
-      this.model.position.y = damp(this.model.position.y, 0.08, 4, dt);
-      this.shadowDisc.material.opacity = damp(this.shadowDisc.material.opacity, 0.08, 3, dt);
-    } else {
-      this.model.rotation.z = damp(this.model.rotation.z, 0, 12, dt);
-      this.shadowDisc.material.opacity = damp(this.shadowDisc.material.opacity, 0.18 + moveAmount * 0.04, 8, dt);
-    }
-
-    this.model.visible = !(this.invulnerabilityTime > 0 && Math.floor(time * 22) % 2 === 0 && this.hurtTime > 0.08);
-
-    const ringPulse = 1.0 + Math.sin(time * 3.4) * 0.03 + moveAmount * 0.05;
-    this.selectionRing.scale.setScalar(ringPulse);
-    this.selectionRing.material.opacity = this.dead ? 0.18 : (this.dashTime > 0 ? 0.92 : 0.74);
+    const ringPulse = 1 + Math.sin(time * 3.2) * 0.035;
+    this.pixelSelectionMarker.visible = !this.dead;
+    this.pixelSelectionMarker.scale.setScalar(ringPulse);
+    this.pixelSelectionMarker.material.opacity = this.dashTime > 0 ? 0.94 : 0.72;
+    this.pixelSelectionMarker.renderOrder = isoRenderOrder(
+      this.root.position.x,
+      this.root.position.z,
+      this.root.position.y,
+      -14,
+    );
 
     const moveTarget = this.input.getMoveTarget();
     if (moveTarget && !this.dead) {
-      this.destinationRing.visible = true;
-      this.destinationRing.position.set(moveTarget.x, 0.045, moveTarget.z);
-      const pulse = 1.0 + Math.sin(time * 6.0) * 0.08;
-      this.destinationRing.scale.setScalar(pulse);
-      this.destinationRing.material.opacity = 0.58;
+      this.pixelDestinationMarker.visible = true;
+      this.pixelDestinationMarker.position.set(moveTarget.x, 0.035, moveTarget.z);
+      const pulse = 1 + Math.sin(time * 6.0) * 0.07;
+      this.pixelDestinationMarker.scale.setScalar(pulse);
+      this.pixelDestinationMarker.material.opacity = 0.62;
+      this.pixelDestinationMarker.renderOrder = isoRenderOrder(
+        moveTarget.x,
+        moveTarget.z,
+        0,
+        -18,
+      );
     } else {
-      this.destinationRing.visible = false;
+      this.pixelDestinationMarker.visible = false;
     }
 
-    if (moveAmount > 0.16 && this.grounded && this.dashTime <= 0 && !this.dead) {
+    if (planarSpeed > 0.16 && this.grounded && this.dashTime <= 0 && !this.dead) {
       this.stepDistance += planarSpeed * dt;
-      const stepLength = planarSpeed > this.walkSpeed + 0.4 ? 0.72 : 0.88;
+      const stepLength = running ? 0.68 : 0.84;
       if (this.stepDistance >= stepLength) {
         this.stepDistance = 0;
         this.audio.playFootstep();
@@ -519,5 +496,10 @@ export class Knight {
     this.destinationRing?.removeFromParent();
     this.destinationRing?.geometry?.dispose?.();
     this.destinationRing?.material?.dispose?.();
+    this.pixelDestinationMarker?.removeFromParent();
+    this.pixelDestinationMarker?.geometry?.dispose?.();
+    this.pixelDestinationMarker?.material?.dispose?.();
+    this.pixelSelectionMarker?.geometry?.dispose?.();
+    this.pixelSelectionMarker?.material?.dispose?.();
   }
 }
