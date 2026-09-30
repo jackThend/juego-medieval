@@ -12,15 +12,15 @@ function createSkyDome(){
       horizonColor:{value:new THREE.Color(0x263a33)},
       bottomColor:{value:new THREE.Color(0x0f1815)},
     },
-    vertexShader:/* glsl */ \`
+    vertexShader:/* glsl */ `
       varying vec3 vWorldPosition;
       void main(){
         vec4 worldPosition=modelMatrix*vec4(position,1.0);
         vWorldPosition=worldPosition.xyz;
         gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);
       }
-    \`,
-    fragmentShader:/* glsl */ \`
+    `,
+    fragmentShader:/* glsl */ `
       uniform vec3 topColor;
       uniform vec3 horizonColor;
       uniform vec3 bottomColor;
@@ -39,7 +39,7 @@ function createSkyDome(){
         color=mix(color,topColor,upper);
         gl_FragColor=vec4(color,1.0);
       }
-    \`,
+    `,
   });
 
   const sky=new THREE.Mesh(geometry,material);
