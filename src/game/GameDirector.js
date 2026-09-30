@@ -216,10 +216,11 @@ export class GameDirector {
     this.world.activateShrine();
     this.audio.playShrine();
     this.effects.burst(
-      this.shrinePos.clone().add(new THREE.Vector3(0, 1.8, 0)),
+      this.shrinePos.clone().add(new THREE.Vector3(0, 1.05, 0)),
       new THREE.Vector3(0, 1, 0),
       28,
       3.8,
+      "sanctum",
     );
     this.effects.shake(0.7, 0.12);
     this.hud.showMessage("EL OCASO CEDE", "Has despertado el altar · Pulsa R para volver a jugar");
