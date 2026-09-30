@@ -23,8 +23,8 @@ export class PhysicsWorld {
     this.world.step();
   }
 
-  createGround({ y = -0.25, halfExtents = { x: 18, y: 0.25, z: 18 } } = {}) {
-    const bodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, y, 0);
+  createGround({ x = 0, y = -0.25, z = 0, halfExtents = { x: 18, y: 0.25, z: 18 } } = {}) {
+    const bodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(x, y, z);
     const body = this.world.createRigidBody(bodyDesc);
     const colliderDesc = RAPIER.ColliderDesc.cuboid(halfExtents.x, halfExtents.y, halfExtents.z)
       .setFriction(1.1)

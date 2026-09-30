@@ -19,7 +19,9 @@ export class WorldBuilder {
 
   _buildPhysicsFoundation(){
     this.physics.createGround({
+      x:0,
       y:-0.25,
+      z:7,
       halfExtents:{x:8,y:0.25,z:8},
     });
 

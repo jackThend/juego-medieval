@@ -4,16 +4,16 @@ let toonGradient=null;
 
 function getToonGradient(){
   if(toonGradient)return toonGradient;
+  // Cuatro bandas deliberadas: a baja resolución cada cambio de luz se
+  // convierte en un cluster legible, no en un degradado toon suave.
   const levels=[
-    38,38,38,255,
-    72,72,72,255,
-    112,112,112,255,
-    158,158,158,255,
-    205,205,205,255,
-    245,245,245,255,
+    44,44,44,255,
+    100,100,100,255,
+    168,168,168,255,
+    238,238,238,255,
   ];
   const data=new Uint8Array(levels);
-  toonGradient=new THREE.DataTexture(data,6,1,THREE.RGBAFormat);
+  toonGradient=new THREE.DataTexture(data,4,1,THREE.RGBAFormat);
   toonGradient.magFilter=THREE.NearestFilter;
   toonGradient.minFilter=THREE.NearestFilter;
   toonGradient.generateMipmaps=false;

@@ -89,7 +89,7 @@ async function boot(){
     scene,
     cameraRig,
     mount,
-    internalHeight:240,
+    internalHeight:190,
   });
 
   const artDirection=new ArtDirectionController(scene,{enemy:guardian,world});
