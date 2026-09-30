@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ProceduralKnightVisual } from "./ProceduralKnightVisual.js";
+import { ProceduralKnightBakeModel } from "./ProceduralKnightBakeModel.js";
 
 export const BAKED_KNIGHT_ANIMATIONS=Object.freeze({
   idle:{frames:4,fps:2.2,loop:true},
@@ -43,32 +43,31 @@ export class ProceduralKnightBaker{
     this.camera.lookAt(0,1.08,0);
     this.camera.updateMatrixWorld();
 
-    this.visual=new ProceduralKnightVisual({forBake:true});
+    this.visual=new ProceduralKnightBakeModel();
     this.scene.add(this.visual.group);
 
-    const hemi=new THREE.HemisphereLight(0xb8c8ce,0x171b18,1.55);
-    this.scene.add(hemi);
+    this.scene.add(new THREE.HemisphereLight(0xb8c8ce,0x171b18,1.35));
 
-    const key=new THREE.DirectionalLight(0xe2ecec,3.3);
+    const key=new THREE.DirectionalLight(0xe2ecec,3.0);
     key.position.set(-4.5,7.5,5.5);
     this.scene.add(key);
 
-    const rim=new THREE.DirectionalLight(0x6e8ca5,0.95);
+    const rim=new THREE.DirectionalLight(0x6e8ca5,0.75);
     rim.position.set(5.5,3.0,-5.0);
     this.scene.add(rim);
 
     const shadow=new THREE.Mesh(
-      new THREE.CircleGeometry(0.56,32),
+      new THREE.CircleGeometry(0.52,32),
       new THREE.MeshBasicMaterial({
         color:0x060909,
         transparent:true,
-        opacity:0.36,
+        opacity:0.34,
         depthWrite:false,
         toneMapped:false,
       }),
     );
     shadow.rotation.x=-Math.PI/2;
-    shadow.scale.set(1,0.64,1);
+    shadow.scale.set(1,0.62,1);
     shadow.position.y=0.012;
     this.scene.add(shadow);
   }
@@ -88,7 +87,6 @@ export class ProceduralKnightBaker{
     try{
       for(const [state,def] of Object.entries(BAKED_KNIGHT_ANIMATIONS)){
         frames[state]=Array.from({length:8},()=>[]);
-
         for(let dir=0;dir<8;dir+=1){
           for(let frame=0;frame<def.frames;frame+=1){
             const phase=def.frames<=1?0:(def.loop?frame/def.frames:frame/(def.frames-1));
@@ -116,7 +114,6 @@ export class ProceduralKnightBaker{
 
     const targets=this.targets.slice();
     const visual=this.visual;
-
     return {
       frames,
       definitions:BAKED_KNIGHT_ANIMATIONS,
