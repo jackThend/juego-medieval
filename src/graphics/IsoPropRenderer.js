@@ -5,6 +5,7 @@ import { isoRenderOrder } from "./IsoDepth.js";
 import { getIsoPropTexture, isoPropScale } from "./IsoPropArt.js";
 import { getPixelLightPool, getPixelLightHalo } from "./PixelLightArt.js";
 import { DestructibleProp } from "../entities/DestructibleProp.js";
+import { createInteractionMarker } from "./InteractionMarkerArt.js";
 
 function ambientCollider(entry, world, physics) {
   if (!entry.solid) return;
@@ -43,6 +44,7 @@ export class IsoPropRenderer {
     this.shrineSprite=null;
     this.glows=[];
     this.shrineActive=false;
+    this.shrineMarker=null;
   }
 
   build() {
@@ -84,7 +86,13 @@ export class IsoPropRenderer {
       this.group.add(sprite);
       this.props.push(sprite);
 
-      if(entry.stateful==="shrine") this.shrineSprite=sprite;
+      if(entry.stateful==="shrine"){
+        this.shrineSprite=sprite;
+        this.shrineMarker=createInteractionMarker("shrine",1.75);
+        this.shrineMarker.position.set(this.world.x,0.034,this.world.z);
+        this.shrineMarker.renderOrder=isoRenderOrder(this.world.x,this.world.z,0,-7);
+        this.group.add(this.shrineMarker);
+      }
 
       if(entry.kind===PROP_KIND.CANDLES){
         this.animated.push({sprite,entry,kind:"candles"});
@@ -136,8 +144,14 @@ export class IsoPropRenderer {
     this.glows.push({ground,halo,kind,strong,isSanctum});
   }
 
+  setShrineHovered(flag){
+    if(!this.shrineMarker)return;
+    this.shrineMarker.visible=Boolean(flag)&&!this.shrineActive;
+  }
+
   setShrineActive(active){
     this.shrineActive=Boolean(active);
+    if(this.shrineMarker)this.shrineMarker.visible=false;
     if(!this.shrineSprite) return;
     const entry=this.shrineSprite.userData.prop;
     this.shrineSprite.material.map=getIsoPropTexture(
@@ -160,6 +174,11 @@ export class IsoPropRenderer {
         candleFrame,
       );
       item.sprite.material.needsUpdate=true;
+    }
+
+    if(this.shrineMarker?.visible){
+      const markerPulse=1+([0,.04,0,-.03][frame]??0);
+      this.shrineMarker.scale.setScalar(markerPulse);
     }
 
     for(const glow of this.glows){

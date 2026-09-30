@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#11130f" />
+    <meta name="theme-color" content="#0d1412" />
     <meta
       name="description"
-      content="Ruinas del Ocaso: microaventura medieval isométrica 3D pixel-art generada completamente por código."
+      content="Ruinas del Ocaso: microaventura de combate isométrico con arte pixel-art generado por código."
     />
     <title>Ruinas del Ocaso</title>
   </head>
@@ -14,59 +14,98 @@
     <div id="app">
       <div id="game-shell">
         <div id="hud">
-          <div class="hud__top-left">
-            <div class="hud__brand">RUINAS DEL OCASO</div>
-            <div id="objective-text" class="hud__objective">El santuario duerme entre las ruinas</div>
-          </div>
-
-          <div class="player-status" aria-label="Vida del jugador">
-            <div class="bar-label">VIGOR</div>
-            <div class="pixel-bar pixel-bar--player">
-              <div id="player-health-fill" class="pixel-bar__fill"></div>
+          <div class="hud__top-left pixel-panel quest-panel">
+            <div class="quest-panel__sigil" aria-hidden="true">
+              <i></i><b></b>
+            </div>
+            <div class="quest-panel__copy">
+              <div class="hud__brand">RUINAS DEL OCASO</div>
+              <div class="hud__location">CLAUSTRO DEL ÚLTIMO SELLO</div>
+              <div id="objective-text" class="hud__objective">El santuario duerme entre las ruinas</div>
             </div>
           </div>
 
-          <div id="enemy-health" class="enemy-status is-hidden" aria-label="Vida del enemigo">
+          <div id="player-status" class="player-status pixel-panel" aria-label="Vida del jugador">
+            <div class="player-status__crest" aria-hidden="true"><i></i></div>
+            <div class="status-copy">
+              <div class="status-heading">
+                <span class="bar-label">VIGOR</span>
+                <span id="player-health-value" class="bar-value">100%</span>
+              </div>
+              <div class="pixel-bar pixel-bar--player">
+                <div id="player-health-fill" class="pixel-bar__fill"></div>
+                <div class="pixel-bar__ticks"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="enemy-health" class="enemy-status pixel-panel is-hidden" aria-label="Vida del enemigo">
+            <div class="enemy-status__ornament" aria-hidden="true">◆</div>
             <div class="enemy-status__name">GUARDIÁN CORRUPTO</div>
-            <div class="pixel-bar pixel-bar--enemy">
-              <div id="enemy-health-fill" class="pixel-bar__fill"></div>
+            <div id="enemy-phase" class="enemy-status__phase">FASE I · SELLO VIVO</div>
+            <div class="enemy-status__bar-row">
+              <div class="pixel-bar pixel-bar--enemy">
+                <div id="enemy-health-fill" class="pixel-bar__fill"></div>
+                <div class="pixel-bar__ticks"></div>
+              </div>
+              <span id="enemy-health-value" class="bar-value bar-value--enemy">100%</span>
             </div>
           </div>
 
-          <div id="interaction-prompt" class="interaction-prompt"></div>
-
-          <div class="hud__controls">
-            <span><b>CLIC</b> mover / atacar</span>
-            <span><b>WASD</b> mover</span>
-            <span><b>SHIFT</b> correr</span>
-            <span><b>ESPACIO</b> rodar</span>
-            <span><b>J</b> atacar</span>
-            <span><b>E</b> interactuar</span>
+          <div id="interaction-prompt" class="interaction-prompt" aria-live="polite">
+            <span id="interaction-key" class="interaction-prompt__key">CLIC</span>
+            <span class="interaction-prompt__divider" aria-hidden="true"></span>
+            <span id="interaction-action" class="interaction-prompt__action"></span>
           </div>
+
+          <div class="hud__controls" aria-label="Controles">
+            <span><kbd>CLIC</kbd> MOVER / ATACAR</span>
+            <span><kbd>WASD</kbd> MOVER</span>
+            <span><kbd>SHIFT</kbd> CORRER</span>
+            <span><kbd>ESPACIO</kbd> RODAR</span>
+            <span><kbd>J</kbd> ATACAR</span>
+            <span><kbd>E</kbd> USAR</span>
+          </div>
+
+          <div id="hud-flash" class="hud-flash" aria-hidden="true"></div>
         </div>
 
         <div id="message-overlay" class="message-overlay" aria-live="polite">
-          <div class="message-overlay__panel">
+          <div id="message-panel" class="message-overlay__panel pixel-panel">
+            <div class="message-overlay__sigil" aria-hidden="true"><i></i></div>
             <div id="message-title" class="message-overlay__title"></div>
+            <div class="message-overlay__rule" aria-hidden="true"></div>
             <div id="message-body" class="message-overlay__body"></div>
           </div>
         </div>
 
         <div id="start-screen" class="start-screen">
-          <div class="start-screen__grain"></div>
-          <div class="start-screen__panel">
-            <div class="start-screen__eyebrow">UNA MICROAVENTURA PROCEDURAL</div>
-            <h1>RUINAS<br />DEL OCASO</h1>
+          <div class="start-screen__pattern" aria-hidden="true"></div>
+          <div class="start-screen__panel pixel-panel">
+            <div class="start-screen__sigil" aria-hidden="true">
+              <i></i><b></b>
+            </div>
+            <div class="start-screen__eyebrow">CRÓNICA I · EL ÚLTIMO SELLO</div>
+            <h1><span>RUINAS</span><span>DEL OCASO</span></h1>
+            <div class="start-screen__rule" aria-hidden="true"></div>
             <p>
-              El último altar de estas tierras sigue respirando bajo la piedra.
-              Algo lo custodia.
+              Bajo el claustro quebrado aún respira un altar.
+              El Guardián conserva su último juramento.
             </p>
-            <button id="start-button" type="button">ENTRAR A LAS RUINAS</button>
-            <div class="start-screen__hint">ENTER / CLIC · controles de RPG isométrico · arte generado por código</div>
+            <button id="start-button" type="button">
+              <span class="button-corner button-corner--tl"></span>
+              <span class="button-corner button-corner--br"></span>
+              ENTRAR AL SANTUARIO
+            </button>
+            <div class="start-screen__hint"><kbd>ENTER</kbd> / <kbd>CLIC</kbd> PARA COMENZAR</div>
           </div>
         </div>
 
-        <div id="loading">FORJANDO LAS RUINAS…</div>
+        <div id="loading" class="pixel-panel">
+          <span class="loading-rune" aria-hidden="true">◆</span>
+          TRAZANDO EL SANTUARIO
+          <span class="loading-dots" aria-hidden="true">...</span>
+        </div>
 
         <div id="touch-controls" class="touch-controls" aria-label="Controles táctiles">
           <div class="touch-dpad">

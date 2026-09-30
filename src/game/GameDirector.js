@@ -32,7 +32,7 @@ export class GameDirector {
     this.input.enabled = true;
     this.hud.hideStart();
     this.hud.setObjective("Clic para moverte o atacar · Destruye objetos · Vence al Guardián");
-    this.hud.setEnemyHealth(1, true);
+    this.hud.setEnemyHealth(1, true, false);
   }
 
   fixedUpdate(dt) {
@@ -78,7 +78,7 @@ export class GameDirector {
     this.hud.setPlayerHealth(this.player.getHealthRatio());
     if (!this.enemy.dead) {
       const visible = this.state !== "intro" && this.state !== "starting";
-      this.hud.setEnemyHealth(this.enemy.getHealthRatio(), visible);
+      this.hud.setEnemyHealth(this.enemy.getHealthRatio(), visible, this.enemy.phaseTwo);
     }
     this._updatePromptAndHover();
   }
@@ -196,13 +196,19 @@ export class GameDirector {
     if (enemyHover) prompt = "CLIC · ATACAR";
     else if (propHover) prompt = "CLIC · DESTRUIR";
 
+    let shrineHover = false;
     if (!prompt && this.enemy.dead) {
-      const shrineHover = Boolean(hover && this.shrinePos.distanceTo(hover) <= this.shrineClickRadius);
+      shrineHover = Boolean(hover && this.shrinePos.distanceTo(hover) <= this.shrineClickRadius);
       const distance = this.playerPos.distanceTo(this.shrinePos);
-      if (distance <= 2.8) prompt = "E / CLIC · ACTIVAR EL ALTAR";
-      else if (shrineHover) prompt = "CLIC · IR AL ALTAR";
+      if (distance <= 2.8) {
+        prompt = "E / CLIC · ACTIVAR EL ALTAR";
+        shrineHover = true;
+      } else if (shrineHover) {
+        prompt = "CLIC · IR AL ALTAR";
+      }
     }
 
+    this.world.setShrineHovered?.(shrineHover);
     this.hud.showPrompt(prompt);
   }
 

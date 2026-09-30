@@ -88,6 +88,10 @@ export class WorldBuilder {
     return SANCTUARY_GRID[tile.row][tile.col];
   }
 
+  setShrineHovered(flag) {
+    this.propRenderer?.setShrineHovered(flag);
+  }
+
   activateShrine() {
     this.shrine.activated = true;
     this.tileRenderer?.setSanctumActive(true);

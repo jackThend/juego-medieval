@@ -3,6 +3,7 @@ import { makeBillboard } from "../graphics/PixelSpriteFactory.js";
 import { getIsoPropTexture, isoPropScale } from "../graphics/IsoPropArt.js";
 import { PROP_KIND } from "../world/SanctuaryProps.js";
 import { isoRenderOrder } from "../graphics/IsoDepth.js";
+import { createInteractionMarker } from "../graphics/InteractionMarkerArt.js";
 
 export class DestructibleProp {
   constructor({ scene, materials, position, type = "crate", rotation = 0, health = 52, variant = 0 }) {
@@ -40,24 +41,9 @@ export class DestructibleProp {
     this.pixelSprite.position.y = 0.01;
     this.root.add(this.pixelSprite);
 
-    this.ring = new THREE.Mesh(
-      new THREE.RingGeometry(type === "urn" ? 0.38 : 0.48, type === "urn" ? 0.48 : 0.60, 20),
-      new THREE.MeshBasicMaterial({
-        color: 0xe0c788,
-        transparent: true,
-        opacity: 0,
-        depthWrite: false,
-        toneMapped: false,
-      }),
-    );
-    this.ring.rotation.x = -Math.PI / 2;
-    this.ring.position.y = 0.035;
-    this.root.add(this.ring);
-
-    this.hitLight = new THREE.PointLight(0xffc37c, 0, 2.1, 2.2);
-    this.hitLight.position.set(0, type === "urn" ? 0.66 : 0.56, 0);
-    this.root.add(this.hitLight);
-  }
+    this.pixelMarker = createInteractionMarker("object", type === "urn" ? 0.9 : 1.06);
+    this.pixelMarker.renderOrder = isoRenderOrder(position.x, position.z, 0, -8);
+    this.root.add(this.pixelMarker);
 
   _piece(geometry, material, position, rotation = [0, 0, 0]) {
     const mesh = new THREE.Mesh(geometry, material);
@@ -121,7 +107,7 @@ export class DestructibleProp {
   _break() {
     this.dead = true;
     this.breakAge = 0;
-    this.ring.visible = false;
+    this.pixelMarker.visible = false;
     const artKind = this.type === "urn" ? PROP_KIND.URN : PROP_KIND.CRATE;
     this.pixelSprite.material.map = getIsoPropTexture(artKind, this.variant, "broken", 0);
     this.pixelSprite.material.needsUpdate = true;
@@ -144,17 +130,17 @@ export class DestructibleProp {
   update(dt, time) {
     if (!this.dead) {
       const pulse = 1 + Math.sin(time * 5.2) * 0.045;
-      this.ring.visible = this.hovered;
-      this.ring.scale.setScalar(pulse);
-      this.ring.material.opacity = this.hovered ? 0.72 : 0;
+      this.pixelMarker.visible = this.hovered;
+      this.pixelMarker.scale.setScalar(pulse);
+      this.pixelMarker.renderOrder = isoRenderOrder(this.root.position.x, this.root.position.z, 0, -8);
 
       if (this.flashTime > 0) {
         this.flashTime = Math.max(0, this.flashTime - dt);
         const flash = this.flashTime / 0.12;
-        this.hitLight.intensity = flash * 3.2;
         this.root.scale.setScalar(1 + flash * 0.045);
+        this.pixelSprite.material.color.setHex(flash > 0.5 ? 0xffe7b0 : 0xffffff);
       } else {
-        this.hitLight.intensity *= Math.exp(-18 * dt);
+        this.pixelSprite.material.color.setHex(0xffffff);
         this.root.scale.lerp(this.unitScale, 1 - Math.exp(-18 * dt));
       this.pixelSprite.renderOrder = isoRenderOrder(this.root.position.x, this.root.position.z, this.root.position.y, 22);
       }
