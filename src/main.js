@@ -16,104 +16,118 @@ import { HUD } from "./ui/HUD.js";
 import { GameDirector } from "./game/GameDirector.js";
 import { ArtDirectionController } from "./graphics/ArtDirectionController.js";
 
-async function boot() {
-  const mount = document.querySelector("#game-shell");
-  const loading = document.querySelector("#loading");
+async function boot(){
+  const mount=document.querySelector("#game-shell");
+  const loading=document.querySelector("#loading");
 
-  const scene = createGameScene();
-  const cameraRig = new CameraRig({ aspect: window.innerWidth / window.innerHeight, viewHeight: 9.4 });
-  const physics = new PhysicsWorld();
+  const scene=createGameScene();
+
+  // A 1080p el render interno suele ser 360 px de alto. viewHeight 8.0 deja
+  // al caballero de 1.78 unidades en ~80 píxeles, prácticamente su resolución
+  // nativa: no necesita ser reescalado de forma borrosa.
+  const cameraRig=new CameraRig({
+    aspect:window.innerWidth/window.innerHeight,
+    viewHeight:8.0,
+  });
+
+  const physics=new PhysicsWorld();
   await physics.init();
 
-  const { materials } = createMaterialLibrary();
-  const input = new InputManager();
+  const {materials}=createMaterialLibrary();
+  const input=new InputManager();
   input.bindVirtualControls(document);
-  const audio = new ProceduralAudio();
-  const hud = new HUD();
+  const audio=new ProceduralAudio();
+  const hud=new HUD();
 
-  const world = new WorldBuilder(scene, physics, materials);
+  const world=new WorldBuilder(scene,physics,materials);
   world.build();
 
-  const knight = new Knight({
+  const knight=new Knight({
     scene,
     physics,
     input,
-    camera: cameraRig.camera,
+    camera:cameraRig.camera,
     materials,
     audio,
   });
 
-  const guardian = new CorruptedGuardian({
+  const guardian=new CorruptedGuardian({
     scene,
     physics,
     materials,
     audio,
   });
 
-  const playerPosition = knight.getPosition(new THREE.Vector3());
+  const playerPosition=knight.getPosition(new THREE.Vector3());
   cameraRig.snapTo(playerPosition);
 
-  const effects = new EffectSystem(scene, cameraRig);
-  const combat = new CombatSystem({ player: knight, enemy: guardian, effects, destructibles: world.getDestructibles() });
-  const director = new GameDirector({
+  const effects=new EffectSystem(scene,cameraRig);
+  const combat=new CombatSystem({
+    player:knight,
+    enemy:guardian,
+    effects,
+    destructibles:world.getDestructibles(),
+  });
+
+  const director=new GameDirector({
     input,
     hud,
     audio,
     world,
-    player: knight,
-    enemy: guardian,
+    player:knight,
+    enemy:guardian,
     combat,
     effects,
   });
 
-  const engine = new Engine({
+  const engine=new Engine({
     scene,
     cameraRig,
     mount,
-    internalHeight: 384,
+    internalHeight:384,
   });
 
-  const artDirection = new ArtDirectionController(scene, { enemy: guardian, world });
-  input.bindPointerMovement(engine.renderer.domElement, cameraRig.camera, THREE);
+  const artDirection=new ArtDirectionController(scene,{enemy:guardian,world});
+  input.bindPointerMovement(engine.renderer.domElement,cameraRig.camera,THREE);
 
-  const startGame = async () => {
-    if (director.state !== "intro") return;
+  const startGame=async()=>{
+    if(director.state!=="intro")return;
     await director.start();
   };
 
   hud.onStart(startGame);
-  window.addEventListener("keydown", (event) => {
-    if (director.state === "intro" && (event.code === "Enter" || event.code === "Space")) {
+  window.addEventListener("keydown",(event)=>{
+    if(director.state==="intro"&&(event.code==="Enter"||event.code==="Space")){
       event.preventDefault();
       startGame();
     }
-  }, { passive: false });
+  },{passive:false});
 
   loading?.classList.add("is-hidden");
-  setTimeout(() => loading?.remove(), 450);
+  setTimeout(()=>loading?.remove(),450);
 
   engine.start({
-    fixedUpdate: (dt) => {
+    fixedUpdate:(dt)=>{
       director.fixedUpdate(dt);
       physics.step();
       knight.syncFromPhysics();
       guardian.syncFromPhysics();
       input.endFixedStep();
     },
-    update: (dt, elapsed) => {
-      knight.updateVisuals(dt, elapsed);
-      guardian.updateVisuals(dt, elapsed);
-      cameraRig.update(knight.getPosition(playerPosition), dt);
-      artDirection.update(dt, playerPosition);
+    update:(dt,elapsed)=>{
+      knight.updateVisuals(dt,elapsed);
+      guardian.updateVisuals(dt,elapsed);
+      cameraRig.update(knight.getPosition(playerPosition),dt);
+      artDirection.update(dt,playerPosition);
       effects.update(dt);
-      world.update(elapsed, dt);
-      director.update(dt, elapsed);
+      world.update(elapsed,dt);
+      director.update(dt,elapsed);
     },
   });
 }
 
-boot().catch((error) => {
-  console.error("No se pudo iniciar Ruinas del Ocaso:", error);
-  const loading = document.querySelector("#loading");
-  if (loading) loading.textContent = "ERROR AL INICIAR · REVISA LA CONSOLA";
+boot().catch((error)=>{
+  console.error("No se pudo iniciar Ruinas del Ocaso:",error);
+  const loading=document.querySelector("#loading");
+  if(loading)loading.textContent="ERROR AL INICIAR · REVISA LA CONSOLA";
 });
