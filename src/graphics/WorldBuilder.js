@@ -1,19 +1,5 @@
 import * as THREE from "three";
-import {
-  ISO_MAP_WIDTH,
-  ISO_MAP_HEIGHT,
-  ISO_TILE_SIZE,
-  SANCTUARY_GRID,
-  SHRINE_POSITION,
-  TILE,
-  isWalkableTile,
-  tileToWorld,
-  worldToTile,
-} from "../world/SanctuaryGrid.js";
-import { IsoTileMapRenderer } from "./IsoTileMapRenderer.js";
-import { IsoArchitectureRenderer } from "./IsoArchitectureRenderer.js";
-import { IsoPropRenderer } from "./IsoPropRenderer.js";
-import { IsoCompositionRenderer } from "./IsoCompositionRenderer.js";
+import { ProceduralProofScene } from "./procedural/ProceduralProofScene.js";
 
 export class WorldBuilder {
   constructor(scene,physics,materials){
@@ -21,55 +7,27 @@ export class WorldBuilder {
     this.physics=physics;
     this.materials=materials;
     this.destructibles=[];
-    this.shrinePosition=new THREE.Vector3(SHRINE_POSITION.x,0,SHRINE_POSITION.z);
+    this.shrinePosition=new THREE.Vector3(0,0,-8.5);
     this.shrine={activated:false};
-    this.compositionRenderer=null;
-    this.tileRenderer=null;
-    this.architectureRenderer=null;
-    this.propRenderer=null;
-    this.tileWorld=new THREE.Vector3();
+    this.proceduralProof=null;
   }
 
   build(){
     this._buildPhysicsFoundation();
-    this.compositionRenderer=new IsoCompositionRenderer(this.scene).build();
-    this.tileRenderer=new IsoTileMapRenderer(this.scene,SANCTUARY_GRID).build();
-    this.architectureRenderer=new IsoArchitectureRenderer(this.scene,this.physics).build();
-    this.propRenderer=new IsoPropRenderer(this.scene,this.physics,this.materials).build();
-    this.destructibles=this.propRenderer.destructibles;
+    this.proceduralProof=new ProceduralProofScene(this.scene,this.physics).build();
   }
 
   _buildPhysicsFoundation(){
-    const halfW=(ISO_MAP_WIDTH*ISO_TILE_SIZE)*0.5;
-    const halfH=(ISO_MAP_HEIGHT*ISO_TILE_SIZE)*0.5;
-
     this.physics.createGround({
       y:-0.25,
-      halfExtents:{x:halfW,y:0.25,z:halfH},
+      halfExtents:{x:8,y:0.25,z:8},
     });
 
-    for(let row=0;row<ISO_MAP_HEIGHT;row+=1){
-      for(let col=0;col<ISO_MAP_WIDTH;col+=1){
-        const type=SANCTUARY_GRID[row][col];
-        if(isWalkableTile(type))continue;
-        tileToWorld(col,row,this.tileWorld);
-        this.physics.createStaticBox({
-          x:this.tileWorld.x,
-          y:0.55,
-          z:this.tileWorld.z,
-          hx:ISO_TILE_SIZE*0.49,
-          hy:0.55,
-          hz:ISO_TILE_SIZE*0.49,
-        });
-      }
-    }
-
-    const edgeX=halfW+0.25;
-    const edgeZ=halfH+0.25;
-    this.physics.createStaticBox({x:-edgeX,y:0.8,z:0,hx:0.25,hy:0.8,hz:halfH});
-    this.physics.createStaticBox({x:edgeX,y:0.8,z:0,hx:0.25,hy:0.8,hz:halfH});
-    this.physics.createStaticBox({x:0,y:0.8,z:-edgeZ,hx:halfW,hy:0.8,hz:0.25});
-    this.physics.createStaticBox({x:0,y:0.8,z:edgeZ,hx:halfW,hy:0.8,hz:0.25});
+    const half=8.0;
+    this.physics.createStaticBox({x:-half,y:0.8,z:7,hx:0.24,hy:0.8,hz:8});
+    this.physics.createStaticBox({x:half,y:0.8,z:7,hx:0.24,hy:0.8,hz:8});
+    this.physics.createStaticBox({x:0,y:0.8,z:-1,hx:8,hy:0.8,hz:0.24});
+    this.physics.createStaticBox({x:0,y:0.8,z:15,hx:8,hy:0.8,hz:0.24});
   }
 
   getDestructibles(){return this.destructibles;}
@@ -78,24 +36,11 @@ export class WorldBuilder {
     return target.copy(this.shrinePosition);
   }
 
-  getTileAtWorld(x,z){
-    const tile=worldToTile(x,z);
-    if(tile.col<0||tile.row<0||tile.col>=ISO_MAP_WIDTH||tile.row>=ISO_MAP_HEIGHT)return TILE.VOID;
-    return SANCTUARY_GRID[tile.row][tile.col];
-  }
+  getTileAtWorld(){return "stone";}
 
-  setShrineHovered(flag){
-    this.propRenderer?.setShrineHovered(flag);
-  }
+  setShrineHovered(){}
 
-  activateShrine(){
-    this.shrine.activated=true;
-    this.tileRenderer?.setSanctumActive(true);
-    this.propRenderer?.setShrineActive(true);
-  }
+  activateShrine(){this.shrine.activated=true;}
 
-  update(time,dt=1/60){
-    this.propRenderer?.update(time,dt);
-    this.destructibles.forEach((prop)=>prop.update(dt,time));
-  }
+  update(){}
 }

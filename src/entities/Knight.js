@@ -1,8 +1,5 @@
 import * as THREE from "three";
-import { makeBillboard } from "../graphics/PixelSpriteFactory.js";
-import { getKnightPixelTexture, getKnightAnimationFrame, knightDirectionFromFacing } from "../graphics/KnightPixelArt.js";
-import { createKnightGroundMarker } from "../graphics/KnightMarkerArt.js";
-import { isoRenderOrder } from "../graphics/IsoDepth.js";
+import { ProceduralKnightVisual } from "../graphics/procedural/ProceduralKnightVisual.js";
 
 function damp(current, target, lambda, dt) {
   return THREE.MathUtils.lerp(current, target, 1 - Math.exp(-lambda * dt));
@@ -60,15 +57,8 @@ export class Knight {
     this.root.add(this.model);
     this.scene.add(this.root);
 
-    this._buildModel();
-    this.model.visible = false;
-    this.shadowDisc.visible = false;
-    this.pixelSprite = makeBillboard(getKnightPixelTexture("idle", "south", 0), 1.42, 1.78, { renderOrder: 6 });
-    this.pixelSprite.position.y = 0.018;
-    this.root.add(this.pixelSprite);
-    this._pixelState = "";
-    this._pixelDirection = "";
-    this._pixelFrame = -1;
+    this.proceduralVisual = new ProceduralKnightVisual();
+    this.root.add(this.proceduralVisual.group);
     this.syncFromPhysics();
   }
 
@@ -365,98 +355,33 @@ export class Knight {
     const planarSpeed = Math.hypot(this.moveVelocity.x, this.moveVelocity.z);
     const running = planarSpeed > this.walkSpeed + 0.35;
 
-    let spriteState = "idle";
-    if (this.dead) spriteState = "death";
-    else if (this.hurtTime > 0) spriteState = "hurt";
-    else if (this.attackTime > 0) spriteState = "attack";
-    else if (this.dashTime > 0) spriteState = "dash";
-    else if (planarSpeed > 0.24) spriteState = running ? "run" : "walk";
+    let state = "idle";
+    if (this.dead) state = "death";
+    else if (this.hurtTime > 0) state = "hurt";
+    else if (this.attackTime > 0) state = "attack";
+    else if (this.dashTime > 0) state = "dash";
+    else if (planarSpeed > 0.24) state = running ? "run" : "walk";
 
     if (this.dead) this.deathVisualTime = Math.min(1.0, this.deathVisualTime + dt);
 
     const attackProgress = this.attackTime > 0
       ? THREE.MathUtils.clamp(1 - this.attackTime / this.attackDuration, 0, 0.999)
       : 0;
-    const hurtProgress = this.hurtTime > 0
-      ? THREE.MathUtils.clamp(1 - this.hurtTime / 0.24, 0, 0.999)
-      : 0;
     const dashProgress = this.dashTime > 0
       ? THREE.MathUtils.clamp(1 - this.dashTime / this.dashDuration, 0, 0.999)
       : 0;
-    const deathProgress = THREE.MathUtils.clamp(this.deathVisualTime / 0.82, 0, 0.999);
+    const deathProgress = THREE.MathUtils.clamp(this.deathVisualTime / 0.82, 0, 1);
 
-    const spriteDirection = knightDirectionFromFacing(this.facing);
-    const spriteFrame = getKnightAnimationFrame(spriteState, time, {
+    this.proceduralVisual.update({
+      dt,
+      time,
+      facing: this.facing,
+      state,
       attackProgress,
-      hurtProgress,
       dashProgress,
       deathProgress,
+      hurt: this.hurtTime > 0,
     });
-
-    if (
-      spriteState !== this._pixelState ||
-      spriteDirection !== this._pixelDirection ||
-      spriteFrame !== this._pixelFrame
-    ) {
-      this.pixelSprite.material.map = getKnightPixelTexture(spriteState, spriteDirection, spriteFrame);
-      this.pixelSprite.material.needsUpdate = true;
-      this._pixelState = spriteState;
-      this._pixelDirection = spriteDirection;
-      this._pixelFrame = spriteFrame;
-    }
-
-    // Deliberadamente más pequeño que el sprite anterior: ahora pertenece al
-    // tileset en vez de dominarlo como una figura de juguete.
-    this.pixelSprite.scale.set(1.42, 1.78, 1);
-    this.pixelSprite.material.opacity = this.dead && deathProgress >= 0.96 ? 0.88 : 1.0;
-
-    // Hurt flicker afecta al sprite real, no al viejo modelo 3D oculto.
-    const flicker = !this.dead &&
-      this.invulnerabilityTime > 0 &&
-      this.hurtTime > 0.08 &&
-      Math.floor(time * 22) % 2 === 0;
-    this.pixelSprite.visible = !flicker;
-    this.pixelSprite.renderOrder = isoRenderOrder(
-      this.root.position.x,
-      this.root.position.z,
-      this.root.position.y,
-      24,
-    );
-
-    // Mantener el modelo legado totalmente fuera del render. Sólo conserva
-    // referencias internas para evitar alterar gameplay antiguo.
-    this.model.visible = false;
-    this.shadowDisc.visible = false;
-    this.attackTrail.visible = false;
-    this.heroLight.intensity = 0;
-
-    const ringPulse = 1 + Math.sin(time * 3.2) * 0.035;
-    this.pixelSelectionMarker.visible = !this.dead;
-    this.pixelSelectionMarker.scale.setScalar(ringPulse);
-    this.pixelSelectionMarker.material.opacity = this.dashTime > 0 ? 0.94 : 0.72;
-    this.pixelSelectionMarker.renderOrder = isoRenderOrder(
-      this.root.position.x,
-      this.root.position.z,
-      this.root.position.y,
-      -14,
-    );
-
-    const moveTarget = this.input.getMoveTarget();
-    if (moveTarget && !this.dead) {
-      this.pixelDestinationMarker.visible = true;
-      this.pixelDestinationMarker.position.set(moveTarget.x, 0.035, moveTarget.z);
-      const pulse = 1 + Math.sin(time * 6.0) * 0.07;
-      this.pixelDestinationMarker.scale.setScalar(pulse);
-      this.pixelDestinationMarker.material.opacity = 0.62;
-      this.pixelDestinationMarker.renderOrder = isoRenderOrder(
-        moveTarget.x,
-        moveTarget.z,
-        0,
-        -18,
-      );
-    } else {
-      this.pixelDestinationMarker.visible = false;
-    }
 
     if (planarSpeed > 0.16 && this.grounded && this.dashTime <= 0 && !this.dead) {
       this.stepDistance += planarSpeed * dt;
@@ -493,13 +418,7 @@ export class Knight {
   }
 
   dispose() {
-    this.destinationRing?.removeFromParent();
-    this.destinationRing?.geometry?.dispose?.();
-    this.destinationRing?.material?.dispose?.();
-    this.pixelDestinationMarker?.removeFromParent();
-    this.pixelDestinationMarker?.geometry?.dispose?.();
-    this.pixelDestinationMarker?.material?.dispose?.();
-    this.pixelSelectionMarker?.geometry?.dispose?.();
-    this.pixelSelectionMarker?.material?.dispose?.();
+    this.proceduralVisual?.dispose();
   }
+
 }

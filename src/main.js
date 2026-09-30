@@ -27,7 +27,7 @@ async function boot(){
   // nativa: no necesita ser reescalado de forma borrosa.
   const cameraRig=new CameraRig({
     aspect:window.innerWidth/window.innerHeight,
-    viewHeight:8.0,
+    viewHeight:7.4,
   });
 
   const physics=new PhysicsWorld();
@@ -58,6 +58,11 @@ async function boot(){
     audio,
   });
 
+  // Proof stage: isolate floor + arch + column + hero.
+  guardian.root.visible=false;
+  guardian.aggroRange=0;
+  guardian.attackRange=0;
+
   const playerPosition=knight.getPosition(new THREE.Vector3());
   cameraRig.snapTo(playerPosition);
 
@@ -84,7 +89,7 @@ async function boot(){
     scene,
     cameraRig,
     mount,
-    internalHeight:384,
+    internalHeight:240,
   });
 
   const artDirection=new ArtDirectionController(scene,{enemy:guardian,world});

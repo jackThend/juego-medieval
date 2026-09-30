@@ -2,34 +2,36 @@ import * as THREE from "three";
 import { PostProcessing } from "./PostProcessing.js";
 
 export class Engine {
-  constructor({ scene, cameraRig, mount, internalHeight = 360 }) {
-    this.scene = scene;
-    this.cameraRig = cameraRig;
-    this.mount = mount;
-    this.internalHeight = internalHeight;
-    this.fixedDt = 1 / 60;
-    this.maxSubSteps = 6;
-    this.accumulator = 0;
-    this.elapsed = 0;
-    this.running = false;
-    this.lastTime = performance.now();
+  constructor({scene,cameraRig,mount,internalHeight=240}){
+    this.scene=scene;
+    this.cameraRig=cameraRig;
+    this.mount=mount;
+    this.internalHeight=internalHeight;
+    this.fixedDt=1/60;
+    this.maxSubSteps=6;
+    this.accumulator=0;
+    this.elapsed=0;
+    this.running=false;
+    this.lastTime=performance.now();
 
-    this.renderer = new THREE.WebGLRenderer({
-      antialias: false,
-      alpha: false,
-      powerPreference: "high-performance",
+    this.renderer=new THREE.WebGLRenderer({
+      antialias:false,
+      alpha:false,
+      powerPreference:"high-performance",
     });
 
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.toneMapping = THREE.AgXToneMapping;
-    this.renderer.toneMappingExposure = 1.18;
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.shadowMap.enabled=true;
+    this.renderer.shadowMap.type=THREE.BasicShadowMap;
+    this.renderer.toneMapping=THREE.NoToneMapping;
+    this.renderer.outputColorSpace=THREE.SRGBColorSpace;
     this.renderer.setPixelRatio(1);
-    this.renderer.domElement.setAttribute("aria-label", "Ruinas del Ocaso, juego 3D isométrico pixel art");
+    this.renderer.domElement.setAttribute(
+      "aria-label",
+      "Ruinas del Ocaso, renderer isométrico procedural pixel art",
+    );
     this.mount.prepend(this.renderer.domElement);
 
-    this.post = new PostProcessing(
+    this.post=new PostProcessing(
       this.renderer,
       this.scene,
       this.cameraRig.camera,
@@ -37,63 +39,59 @@ export class Engine {
       this.internalHeight,
     );
 
-    this._onResize = () => this.resize();
-    this._onVisibilityChange = () => {
-      // Al volver a la pestaña descartamos el tiempo suspendido para evitar una ráfaga de física.
-      if (!document.hidden) {
-        this.lastTime = performance.now();
-        this.accumulator = 0;
+    this._onResize=()=>this.resize();
+    this._onVisibilityChange=()=>{
+      if(!document.hidden){
+        this.lastTime=performance.now();
+        this.accumulator=0;
       }
     };
-    window.addEventListener("resize", this._onResize);
-    document.addEventListener("visibilitychange", this._onVisibilityChange);
+    window.addEventListener("resize",this._onResize);
+    document.addEventListener("visibilitychange",this._onVisibilityChange);
     this.resize();
   }
 
-  resize() {
-    const displayW = Math.max(1, window.innerWidth);
-    const displayH = Math.max(1, window.innerHeight);
-    const aspect = displayW / displayH;
+  resize(){
+    const displayW=Math.max(1,window.innerWidth);
+    const displayH=Math.max(1,window.innerHeight);
+    const aspect=displayW/displayH;
 
-    // Escala pixel-art por peldaños: intentamos que el upscale sea un múltiplo entero
-    // (2x, 3x, 4x...) para evitar columnas de píxeles con anchuras desiguales.
-    const integerScale = Math.max(2, Math.min(4, Math.floor(displayH / 320)));
-    const h = Math.min(this.internalHeight, Math.max(320, Math.floor(displayH / integerScale)));
-    const w = Math.max(320, Math.floor(displayW / integerScale));
+    const integerScale=Math.max(2,Math.min(5,Math.round(displayH/this.internalHeight)));
+    const h=Math.max(180,Math.floor(displayH/integerScale));
+    const w=Math.max(320,Math.floor(displayW/integerScale));
 
-    this.renderer.setSize(w, h, false);
-    this.post.resize(w, h);
+    this.renderer.setSize(w,h,false);
+    this.post.resize(w,h);
     this.cameraRig.resize(aspect);
     this.cameraRig.setPixelResolution(h);
   }
 
-  start({ fixedUpdate, update, afterFrame } = {}) {
-    if (this.running) return;
-    this.running = true;
-    this.lastTime = performance.now();
+  start({fixedUpdate,update,afterFrame}={}){
+    if(this.running)return;
+    this.running=true;
+    this.lastTime=performance.now();
 
-    const frame = (now) => {
-      if (!this.running) return;
+    const frame=(now)=>{
+      if(!this.running)return;
 
-      const dt = Math.min((now - this.lastTime) / 1000, 0.1);
-      this.lastTime = now;
-      this.accumulator += dt;
-      this.elapsed += dt;
+      const dt=Math.min((now-this.lastTime)/1000,0.1);
+      this.lastTime=now;
+      this.accumulator+=dt;
+      this.elapsed+=dt;
 
-      let subSteps = 0;
-      while (this.accumulator >= this.fixedDt && subSteps < this.maxSubSteps) {
-        fixedUpdate?.(this.fixedDt, this.elapsed);
-        this.accumulator -= this.fixedDt;
-        subSteps += 1;
+      let subSteps=0;
+      while(this.accumulator>=this.fixedDt&&subSteps<this.maxSubSteps){
+        fixedUpdate?.(this.fixedDt,this.elapsed);
+        this.accumulator-=this.fixedDt;
+        subSteps+=1;
       }
 
-      // Protección contra spiral-of-death en pestañas saturadas o dispositivos lentos.
-      if (subSteps === this.maxSubSteps && this.accumulator >= this.fixedDt) {
-        this.accumulator %= this.fixedDt;
+      if(subSteps===this.maxSubSteps&&this.accumulator>=this.fixedDt){
+        this.accumulator%=this.fixedDt;
       }
 
-      const alpha = this.accumulator / this.fixedDt;
-      update?.(dt, this.elapsed, alpha);
+      const alpha=this.accumulator/this.fixedDt;
+      update?.(dt,this.elapsed,alpha);
       this.post.render(dt);
       afterFrame?.();
 
@@ -103,14 +101,12 @@ export class Engine {
     requestAnimationFrame(frame);
   }
 
-  stop() {
-    this.running = false;
-  }
+  stop(){this.running=false;}
 
-  dispose() {
+  dispose(){
     this.stop();
-    window.removeEventListener("resize", this._onResize);
-    document.removeEventListener("visibilitychange", this._onVisibilityChange);
+    window.removeEventListener("resize",this._onResize);
+    document.removeEventListener("visibilitychange",this._onVisibilityChange);
     this.renderer.dispose();
   }
 }
