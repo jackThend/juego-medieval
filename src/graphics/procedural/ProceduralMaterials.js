@@ -4,14 +4,16 @@ let toonGradient=null;
 
 function getToonGradient(){
   if(toonGradient)return toonGradient;
-  // Cuatro bandas deliberadas: a baja resolución cada cambio de luz se
-  // convierte en un cluster legible, no en un degradado toon suave.
+
+  // Four hard light bands. At the intentionally small framebuffer these form
+  // readable pixel clusters instead of smooth toon gradients.
   const levels=[
-    44,44,44,255,
-    100,100,100,255,
-    168,168,168,255,
-    238,238,238,255,
+    42,42,42,255,
+    96,96,96,255,
+    162,162,162,255,
+    236,236,236,255,
   ];
+
   const data=new Uint8Array(levels);
   toonGradient=new THREE.DataTexture(data,4,1,THREE.RGBAFormat);
   toonGradient.magFilter=THREE.NearestFilter;
@@ -53,11 +55,11 @@ export function createProceduralToonMaterial({
       )
       .replace(
         "vec4 diffuseColor = vec4( diffuse, opacity );",
-        "float cell=procHash(floor(vProcWorld*vec3(3.0,2.5,3.0)));float band=floor(cell*3.0)/2.0;float variation=mix(0.84,1.08,band);vec3 procDiffuse=diffuse*variation;vec4 diffuseColor=vec4(procDiffuse,opacity);"
+        "float cell=procHash(floor(vProcWorld*vec3(3.4,2.8,3.4)));float band=floor(cell*3.0)/2.0;float variation=mix(0.86,1.06,band);vec3 procDiffuse=diffuse*variation;vec4 diffuseColor=vec4(procDiffuse,opacity);"
       );
   };
 
-  material.customProgramCacheKey=()=>"procedural-toon-"+family;
+  material.customProgramCacheKey=()=>"procedural-toon-v2-"+family;
   return material;
 }
 
@@ -84,31 +86,32 @@ export function createFloorMaterial(){
     "  return fract(p.x*p.y);",
     "}",
     "void main(){",
-    "  vec2 p=vWorld.xz*1.15;",
+    "  vec2 p=vec2(vWorld.x*0.72,vWorld.z*1.08);",
     "  float row=floor(p.y);",
-    "  p.x+=mod(row,2.0)*0.48;",
+    "  p.x+=mod(row,2.0)*0.52;",
     "  vec2 cell=floor(p);",
     "  vec2 f=fract(p);",
-    "  float jitter=(hash21(cell)-0.5)*0.10;",
-    "  f.x=fract(f.x+jitter);",
     "  float edge=min(min(f.x,1.0-f.x),min(f.y,1.0-f.y));",
-    "  float mortarMask=1.0-step(0.045,edge);",
+    "  float mortarMask=1.0-step(0.035,edge);",
     "  float h=hash21(cell);",
     "  float tone=floor(h*3.0);",
     "  vec3 stone=tone<1.0?baseA:(tone<2.0?baseB:baseC);",
     "  float crackSeed=hash21(cell+17.0);",
     "  float crackLine=0.0;",
-    "  if(crackSeed>0.80){",
-    "    float line=abs(f.x-(0.25+f.y*0.42));",
-    "    crackLine=1.0-step(0.022,line);",
+    "  if(crackSeed>0.79){",
+    "    float bend=0.22+0.34*f.y+0.08*sin(f.y*8.0);",
+    "    crackLine=1.0-step(0.018,abs(f.x-bend));",
     "  }",
+    "  float chipSeed=hash21(cell+73.0);",
+    "  float chip=step(0.90,chipSeed)*step(length(f-vec2(0.15,0.82)),0.09);",
     "  float mossSeed=hash21(cell+41.0);",
-    "  float mossMask=step(0.87,mossSeed)*step(f.y,0.20)*step(f.x,0.55);",
-    "  stone=mix(stone,moss,mossMask*0.65);",
+    "  float mossMask=step(0.88,mossSeed)*step(f.y,0.17)*step(f.x,0.62);",
+    "  stone=mix(stone,moss,mossMask*0.68);",
     "  stone=mix(stone,mortar,mortarMask);",
-    "  stone=mix(stone,mortar,crackLine*0.72);",
-    "  float lightBand=floor((0.72+0.08*sin(vWorld.x*0.42))*5.0)/5.0;",
-    "  stone*=0.80+lightBand*0.24;",
+    "  stone=mix(stone,mortar,crackLine*0.78);",
+    "  stone=mix(stone,mortar,chip*0.60);",
+    "  float broad=floor((0.62+0.10*sin(vWorld.x*0.28)+0.06*cos(vWorld.z*0.22))*4.0)/4.0;",
+    "  stone*=0.86+broad*0.17;",
     "  gl_FragColor=vec4(stone,1.0);",
     "}",
   ].join("\n");
@@ -116,11 +119,11 @@ export function createFloorMaterial(){
   return new THREE.ShaderMaterial({
     toneMapped:false,
     uniforms:{
-      baseA:{value:new THREE.Color(0x313b3d)},
-      baseB:{value:new THREE.Color(0x414b4b)},
-      baseC:{value:new THREE.Color(0x58615e)},
-      mortar:{value:new THREE.Color(0x1b2325)},
-      moss:{value:new THREE.Color(0x314438)},
+      baseA:{value:new THREE.Color(0x394346)},
+      baseB:{value:new THREE.Color(0x444e4f)},
+      baseC:{value:new THREE.Color(0x505957)},
+      mortar:{value:new THREE.Color(0x20282a)},
+      moss:{value:new THREE.Color(0x33483a)},
     },
     vertexShader,
     fragmentShader,

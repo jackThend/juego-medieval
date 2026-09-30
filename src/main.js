@@ -16,15 +16,13 @@ import { HUD } from "./ui/HUD.js";
 import { GameDirector } from "./game/GameDirector.js";
 import { ArtDirectionController } from "./graphics/ArtDirectionController.js";
 
+const PROCEDURAL_PROOF=true;
+
 async function boot(){
   const mount=document.querySelector("#game-shell");
   const loading=document.querySelector("#loading");
 
   const scene=createGameScene();
-
-  // A 1080p el render interno suele ser 360 px de alto. viewHeight 8.0 deja
-  // al caballero de 1.78 unidades en ~80 píxeles, prácticamente su resolución
-  // nativa: no necesita ser reescalado de forma borrosa.
   const cameraRig=new CameraRig({
     aspect:window.innerWidth/window.innerHeight,
     viewHeight:7.4,
@@ -58,10 +56,13 @@ async function boot(){
     audio,
   });
 
-  // Proof stage: isolate floor + arch + column + hero.
-  guardian.root.visible=false;
-  guardian.aggroRange=0;
-  guardian.attackRange=0;
+  if(PROCEDURAL_PROOF){
+    guardian.root.visible=false;
+    guardian.aggroRange=0;
+    guardian.attackRange=0;
+    guardian.body.setTranslation({x:100,y:0.74,z:100},true);
+    guardian.syncFromPhysics();
+  }
 
   const playerPosition=knight.getPosition(new THREE.Vector3());
   cameraRig.snapTo(playerPosition);
@@ -92,12 +93,16 @@ async function boot(){
     internalHeight:190,
   });
 
-  const artDirection=new ArtDirectionController(scene,{enemy:guardian,world});
+  const artDirection=new ArtDirectionController(scene,{enemy:PROCEDURAL_PROOF?null:guardian,world});
   input.bindPointerMovement(engine.renderer.domElement,cameraRig.camera,THREE);
 
   const startGame=async()=>{
     if(director.state!=="intro")return;
     await director.start();
+    if(PROCEDURAL_PROOF){
+      hud.setObjective("Prueba procedural · Explora geometría, luz, sombras y materiales");
+      hud.setEnemyHealth(1,false,false);
+    }
   };
 
   hud.onStart(startGame);
@@ -116,17 +121,18 @@ async function boot(){
       director.fixedUpdate(dt);
       physics.step();
       knight.syncFromPhysics();
-      guardian.syncFromPhysics();
+      if(!PROCEDURAL_PROOF)guardian.syncFromPhysics();
       input.endFixedStep();
     },
     update:(dt,elapsed)=>{
       knight.updateVisuals(dt,elapsed);
-      guardian.updateVisuals(dt,elapsed);
+      if(!PROCEDURAL_PROOF)guardian.updateVisuals(dt,elapsed);
       cameraRig.update(knight.getPosition(playerPosition),dt);
       artDirection.update(dt,playerPosition);
       effects.update(dt);
       world.update(elapsed,dt);
       director.update(dt,elapsed);
+      if(PROCEDURAL_PROOF)hud.setEnemyHealth(1,false,false);
     },
   });
 }
