@@ -44,6 +44,7 @@ export class DestructibleProp {
     this.pixelMarker = createInteractionMarker("object", type === "urn" ? 0.9 : 1.06);
     this.pixelMarker.renderOrder = isoRenderOrder(position.x, position.z, 0, -8);
     this.root.add(this.pixelMarker);
+  }
 
   _piece(geometry, material, position, rotation = [0, 0, 0]) {
     const mesh = new THREE.Mesh(geometry, material);
@@ -142,13 +143,12 @@ export class DestructibleProp {
       } else {
         this.pixelSprite.material.color.setHex(0xffffff);
         this.root.scale.lerp(this.unitScale, 1 - Math.exp(-18 * dt));
-      this.pixelSprite.renderOrder = isoRenderOrder(this.root.position.x, this.root.position.z, this.root.position.y, 22);
       }
+      this.pixelSprite.renderOrder = isoRenderOrder(this.root.position.x, this.root.position.z, this.root.position.y, 22);
       return;
     }
 
     this.breakAge += dt;
-    this.hitLight.intensity *= Math.exp(-10 * dt);
 
     this.pixelSprite.material.opacity = Math.max(0, 1 - Math.max(0, this.breakAge - 0.58) / 0.62);
 
