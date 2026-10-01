@@ -96,25 +96,25 @@ async function boot(){
     scene,
     cameraRig,
     mount,
-    internalHeight:190,
+    internalHeight:270,
   });
 
-  loading && (loading.textContent="HORNEANDO CABALLERO · 8 DIRECCIONES");
+  loading && (loading.textContent="HORNEANDO CABALLERO · 96×128 · 8 DIRECCIONES");
   const liveKnight=knight.proceduralVisual;
   knight.root.remove(liveKnight.group);
   liveKnight.dispose();
 
-  const bakedKnight=new ProceduralKnightBaker(engine.renderer,{width:72,height:96}).bake();
+  const bakedKnight=new ProceduralKnightBaker(engine.renderer,{width:96,height:128}).bake();
   knight.proceduralVisual=new BakedKnightVisual(bakedKnight);
   knight.root.add(knight.proceduralVisual.group);
 
-  loading && (loading.textContent="HORNEANDO ARQUITECTURA · PIEDRA PROCEDURAL");
+  loading && (loading.textContent="HORNEANDO ARQUITECTURA · DETALLE ALTO");
   const bakedArchitecture=new ProceduralArchitectureBaker(engine.renderer).bakeLibrary();
   world.proceduralProof.setArchitectureVisible(false);
   const bakedArchitectureLayer=new BakedArchitectureLayer(scene,bakedArchitecture);
   scene.userData.bakedArchitectureLayer=bakedArchitectureLayer;
 
-  loading && (loading.textContent="HORNEANDO VEGETACIÓN Y ALTAR · LUZ LOCAL");
+  loading && (loading.textContent="HORNEANDO VEGETACIÓN Y ALTAR · PALETA 9F");
   const bakedSetDressing=new ProceduralSetDressingBaker(engine.renderer).bakeLibrary();
   world.proceduralProof.setSetDressingVisible(false);
   const bakedSetDressingLayer=new BakedSetDressingLayer(scene,bakedSetDressing);
@@ -127,7 +127,7 @@ async function boot(){
     if(director.state!=="intro")return;
     await director.start();
     if(PROCEDURAL_PROOF){
-      hud.setObjective("Prueba 9E · Escena baked completa con luz fría y focos cálidos");
+      hud.setObjective("Prueba 9F · Más detalle, piedra neutral y luz ámbar");
       hud.setEnemyHealth(1,false,false);
     }
   };
