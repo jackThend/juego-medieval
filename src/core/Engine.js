@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { PostProcessing } from "./PostProcessing.js";
 
 export class Engine {
-  constructor({scene,cameraRig,mount,internalHeight=190}){
+  constructor({scene,cameraRig,mount,internalHeight=270}){
     this.scene=scene;
     this.cameraRig=cameraRig;
     this.mount=mount;
@@ -56,11 +56,11 @@ export class Engine {
     const displayH=Math.max(1,window.innerHeight);
     const aspect=displayW/displayH;
 
-    // Buscamos píxel grande: en una pantalla 720-800p esto normalmente da
-    // escala 4x y un framebuffer cercano a 180-200 px de alto.
-    const integerScale=Math.max(3,Math.min(6,Math.round(displayH/this.internalHeight)));
-    const h=Math.max(160,Math.floor(displayH/integerScale));
-    const w=Math.max(320,Math.floor(displayW/integerScale));
+    // 9F: más píxeles útiles. Seguimos escalando sin suavizado, pero ya no
+    // forzamos el framebuffer ultrabajo de 9E.
+    const integerScale=Math.max(2,Math.min(5,Math.round(displayH/this.internalHeight)));
+    const h=Math.max(220,Math.floor(displayH/integerScale));
+    const w=Math.max(360,Math.floor(displayW/integerScale));
 
     this.renderer.setSize(w,h,false);
     this.post.resize(w,h);
