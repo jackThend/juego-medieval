@@ -5,9 +5,9 @@ const shader={
   uniforms:{
     tDiffuse:{value:null},
     resolution:{value:new THREE.Vector2(320,180)},
-    colorSteps:{value:10.0},
-    edgeThreshold:{value:0.16},
-    edgeDarken:{value:0.78},
+    colorSteps:{value:24.0},
+    edgeThreshold:{value:0.24},
+    edgeDarken:{value:0.90},
   },
   vertexShader:/* glsl */`
     varying vec2 vUv;
@@ -24,14 +24,6 @@ const shader={
     uniform float edgeDarken;
     varying vec2 vUv;
 
-    float bayer2(vec2 p){
-      vec2 m=mod(floor(p),2.0);
-      if(m.x<0.5&&m.y<0.5)return 0.0;
-      if(m.x>0.5&&m.y>0.5)return 1.0;
-      if(m.x>0.5)return 0.5;
-      return 0.75;
-    }
-
     void main(){
       vec2 px=1.0/resolution;
       vec3 c=texture2D(tDiffuse,vUv).rgb;
@@ -41,15 +33,12 @@ const shader={
       vec3 d=texture2D(tDiffuse,vUv-vec2(0.0,px.y)).rgb;
 
       float edge=max(max(length(c-l),length(c-r)),max(length(c-u),length(c-d)));
-      float ordered=(bayer2(gl_FragCoord.xy)-0.5)/(colorSteps*2.6);
-      vec3 q=floor(clamp(c+ordered,0.0,1.0)*colorSteps+0.5)/colorSteps;
+      vec3 q=floor(clamp(c,0.0,1.0)*colorSteps+0.5)/colorSteps;
 
       if(edge>edgeThreshold){
         q*=edgeDarken;
       }
 
-      // final hard clamp keeps tiny anti-aliased remnants from reappearing.
-      q=floor(q*15.0+0.5)/15.0;
       gl_FragColor=vec4(q,1.0);
     }
   `,
