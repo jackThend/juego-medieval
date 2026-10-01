@@ -17,6 +17,8 @@ import { GameDirector } from "./game/GameDirector.js";
 import { ArtDirectionController } from "./graphics/ArtDirectionController.js";
 import { ProceduralKnightBaker } from "./graphics/procedural/ProceduralKnightBaker.js";
 import { BakedKnightVisual } from "./graphics/procedural/BakedKnightVisual.js";
+import { ProceduralArchitectureBaker } from "./graphics/procedural/ProceduralArchitectureBaker.js";
+import { BakedArchitectureLayer } from "./graphics/procedural/BakedArchitectureLayer.js";
 
 const PROCEDURAL_PROOF=true;
 
@@ -95,9 +97,7 @@ async function boot(){
     internalHeight:190,
   });
 
-  // 9C: the hero is authored as procedural 3D, rendered off-screen to small
-  // isometric frames, then displayed in-game only as the baked result.
-  loading && (loading.textContent="HORNEANDO AL CABALLERO · 8 DIRECCIONES");
+  loading && (loading.textContent="HORNEANDO CABALLERO · 8 DIRECCIONES");
   const liveKnight=knight.proceduralVisual;
   knight.root.remove(liveKnight.group);
   liveKnight.dispose();
@@ -106,6 +106,14 @@ async function boot(){
   knight.proceduralVisual=new BakedKnightVisual(bakedKnight);
   knight.root.add(knight.proceduralVisual.group);
 
+  // 9D: the visible architecture is now produced by the same 3D -> bake
+  // pipeline. Physics and gameplay remain true 3D underneath.
+  loading && (loading.textContent="HORNEANDO ARQUITECTURA · PIEDRA PROCEDURAL");
+  const bakedArchitecture=new ProceduralArchitectureBaker(engine.renderer).bakeLibrary();
+  world.proceduralProof.setArchitectureVisible(false);
+  const bakedArchitectureLayer=new BakedArchitectureLayer(scene,bakedArchitecture);
+  scene.userData.bakedArchitectureLayer=bakedArchitectureLayer;
+
   const artDirection=new ArtDirectionController(scene,{enemy:PROCEDURAL_PROOF?null:guardian,world});
   input.bindPointerMovement(engine.renderer.domElement,cameraRig.camera,THREE);
 
@@ -113,7 +121,7 @@ async function boot(){
     if(director.state!=="intro")return;
     await director.start();
     if(PROCEDURAL_PROOF){
-      hud.setObjective("Prueba 9C · Caballero 3D procedural horneado a sprite isométrico");
+      hud.setObjective("Prueba 9D · Personaje y arquitectura 3D horneados a pixel-art isométrico");
       hud.setEnemyHealth(1,false,false);
     }
   };
