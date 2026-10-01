@@ -33,7 +33,7 @@ export class BakedKnightVisual{
     this.frame=0;
   }
 
-  update({time,facing,state,attackProgress=0,dashProgress=0,deathProgress=0,hurtProgress=0}){
+  update({time,facing,state,attackProgress=0,dashProgress=0,deathProgress=0}){
     const dir=directionIndexFromFacing(facing);
     const def=this.baked.definitions[state]??this.baked.definitions.idle;
     let frame=0;
@@ -41,7 +41,6 @@ export class BakedKnightVisual{
     if(state==="attack")frame=Math.min(def.frames-1,Math.floor(attackProgress*def.frames));
     else if(state==="dash")frame=Math.min(def.frames-1,Math.floor(dashProgress*def.frames));
     else if(state==="death")frame=Math.min(def.frames-1,Math.floor(deathProgress*def.frames));
-    else if(state==="hurt")frame=Math.min(def.frames-1,Math.floor(hurtProgress*def.frames));
     else frame=Math.floor(time*def.fps)%def.frames;
 
     if(state!==this.state||dir!==this.direction||frame!==this.frame){
