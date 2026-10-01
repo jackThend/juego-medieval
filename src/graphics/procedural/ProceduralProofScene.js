@@ -18,6 +18,9 @@ export class ProceduralProofScene {
     this.physics=physics;
     this.group=new THREE.Group();
     this.group.name="procedural-renderer-proof";
+    this.architectureGroup=new THREE.Group();
+    this.architectureGroup.name="live-procedural-architecture";
+    this.group.add(this.architectureGroup);
     scene.add(this.group);
   }
 
@@ -51,31 +54,30 @@ export class ProceduralProofScene {
 
     const column=createProceduralColumn({stone,darkStone});
     column.position.set(-2.35,0,6.8);
-    this.group.add(column);
+    this.architectureGroup.add(column);
 
-    // Smaller portal, now placed on a real raised approach.
     const stairs=createProceduralStairs({stone,darkStone,width:2.35,steps:5,depth:2.0,height:0.70});
     stairs.position.set(1.75,0,5.45);
-    this.group.add(stairs);
+    this.architectureGroup.add(stairs);
 
     const arch=createProceduralArch({stone,darkStone,trim});
     arch.position.set(1.75,0.70,3.95);
     arch.rotation.y=Math.PI/10;
-    this.group.add(arch);
+    this.architectureGroup.add(arch);
 
     const rearWall=createProceduralWall({
       stone,darkStone,width:4.8,height:1.85,depth:0.48,seed:17,broken:true,
     });
     rearWall.position.set(-1.9,0,2.15);
     rearWall.rotation.y=0.03;
-    this.group.add(rearWall);
+    this.architectureGroup.add(rearWall);
 
     const sideRuin=createProceduralWall({
       stone,darkStone,width:3.5,height:1.65,depth:0.46,seed:29,broken:true,
     });
     sideRuin.position.set(-5.15,0,7.2);
     sideRuin.rotation.y=Math.PI/2;
-    this.group.add(sideRuin);
+    this.architectureGroup.add(sideRuin);
 
     const tree=createProceduralTree({bark,barkDark,leaf,leafDark,seed:41});
     tree.position.set(5.15,0,6.5);
@@ -105,13 +107,16 @@ export class ProceduralProofScene {
     return this;
   }
 
+  setArchitectureVisible(flag){
+    this.architectureGroup.visible=Boolean(flag);
+  }
+
   _buildColliders(){
     this.physics.createStaticBox({
       x:-2.35,y:1.14,z:6.8,
       hx:0.42,hy:1.14,hz:0.42,
     });
 
-    // Stairs: the controller can really climb the generated steps.
     const stairX=1.75;
     const stairStartZ=5.45;
     const stepDepth=2.0/5;
