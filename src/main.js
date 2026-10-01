@@ -19,6 +19,8 @@ import { ProceduralKnightBaker } from "./graphics/procedural/ProceduralKnightBak
 import { BakedKnightVisual } from "./graphics/procedural/BakedKnightVisual.js";
 import { ProceduralArchitectureBaker } from "./graphics/procedural/ProceduralArchitectureBaker.js";
 import { BakedArchitectureLayer } from "./graphics/procedural/BakedArchitectureLayer.js";
+import { ProceduralSetDressingBaker } from "./graphics/procedural/ProceduralSetDressingBaker.js";
+import { BakedSetDressingLayer } from "./graphics/procedural/BakedSetDressingLayer.js";
 
 const PROCEDURAL_PROOF=true;
 
@@ -106,13 +108,17 @@ async function boot(){
   knight.proceduralVisual=new BakedKnightVisual(bakedKnight);
   knight.root.add(knight.proceduralVisual.group);
 
-  // 9D: the visible architecture is now produced by the same 3D -> bake
-  // pipeline. Physics and gameplay remain true 3D underneath.
   loading && (loading.textContent="HORNEANDO ARQUITECTURA · PIEDRA PROCEDURAL");
   const bakedArchitecture=new ProceduralArchitectureBaker(engine.renderer).bakeLibrary();
   world.proceduralProof.setArchitectureVisible(false);
   const bakedArchitectureLayer=new BakedArchitectureLayer(scene,bakedArchitecture);
   scene.userData.bakedArchitectureLayer=bakedArchitectureLayer;
+
+  loading && (loading.textContent="HORNEANDO VEGETACIÓN Y ALTAR · LUZ LOCAL");
+  const bakedSetDressing=new ProceduralSetDressingBaker(engine.renderer).bakeLibrary();
+  world.proceduralProof.setSetDressingVisible(false);
+  const bakedSetDressingLayer=new BakedSetDressingLayer(scene,bakedSetDressing);
+  scene.userData.bakedSetDressingLayer=bakedSetDressingLayer;
 
   const artDirection=new ArtDirectionController(scene,{enemy:PROCEDURAL_PROOF?null:guardian,world});
   input.bindPointerMovement(engine.renderer.domElement,cameraRig.camera,THREE);
@@ -121,7 +127,7 @@ async function boot(){
     if(director.state!=="intro")return;
     await director.start();
     if(PROCEDURAL_PROOF){
-      hud.setObjective("Prueba 9D · Personaje y arquitectura 3D horneados a pixel-art isométrico");
+      hud.setObjective("Prueba 9E · Escena baked completa con luz fría y focos cálidos");
       hud.setEnemyHealth(1,false,false);
     }
   };
@@ -152,6 +158,7 @@ async function boot(){
       artDirection.update(dt,playerPosition);
       effects.update(dt);
       world.update(elapsed,dt);
+      bakedSetDressingLayer.update(elapsed);
       director.update(dt,elapsed);
       if(PROCEDURAL_PROOF)hud.setEnemyHealth(1,false,false);
     },
