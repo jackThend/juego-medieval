@@ -26,7 +26,7 @@ function makeTarget(width,height){
 }
 
 export class ProceduralKnightBaker{
-  constructor(renderer,{width=72,height=96}={}){
+  constructor(renderer,{width=96,height=128}={}){
     this.renderer=renderer;
     this.width=width;
     this.height=height;
@@ -46,22 +46,23 @@ export class ProceduralKnightBaker{
     this.visual=new ProceduralKnightBakeModel();
     this.scene.add(this.visual.group);
 
-    this.scene.add(new THREE.HemisphereLight(0xb8c8ce,0x171b18,1.35));
+    // Much more neutral than 9E: metal should read as steel, not cyan.
+    this.scene.add(new THREE.HemisphereLight(0xb8b9af,0x1a1b17,1.24));
 
-    const key=new THREE.DirectionalLight(0xe2ecec,3.0);
+    const key=new THREE.DirectionalLight(0xe6e1d3,2.82);
     key.position.set(-4.5,7.5,5.5);
     this.scene.add(key);
 
-    const rim=new THREE.DirectionalLight(0x6e8ca5,0.75);
+    const rim=new THREE.DirectionalLight(0x7b8587,0.44);
     rim.position.set(5.5,3.0,-5.0);
     this.scene.add(rim);
 
     const shadow=new THREE.Mesh(
       new THREE.CircleGeometry(0.52,32),
       new THREE.MeshBasicMaterial({
-        color:0x060909,
+        color:0x050605,
         transparent:true,
-        opacity:0.34,
+        opacity:0.31,
         depthWrite:false,
         toneMapped:false,
       }),
