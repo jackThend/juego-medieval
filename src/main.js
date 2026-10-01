@@ -15,6 +15,8 @@ import { EffectSystem } from "./effects/EffectSystem.js";
 import { HUD } from "./ui/HUD.js";
 import { GameDirector } from "./game/GameDirector.js";
 import { ArtDirectionController } from "./graphics/ArtDirectionController.js";
+import { ProceduralKnightBaker } from "./graphics/procedural/ProceduralKnightBaker.js";
+import { BakedKnightVisual } from "./graphics/procedural/BakedKnightVisual.js";
 
 const PROCEDURAL_PROOF=true;
 
@@ -93,6 +95,17 @@ async function boot(){
     internalHeight:190,
   });
 
+  // 9C: the hero is authored as procedural 3D, rendered off-screen to small
+  // isometric frames, then displayed in-game only as the baked result.
+  loading && (loading.textContent="HORNEANDO AL CABALLERO · 8 DIRECCIONES");
+  const liveKnight=knight.proceduralVisual;
+  knight.root.remove(liveKnight.group);
+  liveKnight.dispose();
+
+  const bakedKnight=new ProceduralKnightBaker(engine.renderer,{width:72,height:96}).bake();
+  knight.proceduralVisual=new BakedKnightVisual(bakedKnight);
+  knight.root.add(knight.proceduralVisual.group);
+
   const artDirection=new ArtDirectionController(scene,{enemy:PROCEDURAL_PROOF?null:guardian,world});
   input.bindPointerMovement(engine.renderer.domElement,cameraRig.camera,THREE);
 
@@ -100,7 +113,7 @@ async function boot(){
     if(director.state!=="intro")return;
     await director.start();
     if(PROCEDURAL_PROOF){
-      hud.setObjective("Prueba procedural · Explora geometría, luz, sombras y materiales");
+      hud.setObjective("Prueba 9C · Caballero 3D procedural horneado a sprite isométrico");
       hud.setEnemyHealth(1,false,false);
     }
   };
