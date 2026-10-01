@@ -18,9 +18,15 @@ export class ProceduralProofScene {
     this.physics=physics;
     this.group=new THREE.Group();
     this.group.name="procedural-renderer-proof";
+
     this.architectureGroup=new THREE.Group();
     this.architectureGroup.name="live-procedural-architecture";
     this.group.add(this.architectureGroup);
+
+    this.setDressingGroup=new THREE.Group();
+    this.setDressingGroup.name="live-procedural-set-dressing";
+    this.group.add(this.setDressingGroup);
+
     scene.add(this.group);
   }
 
@@ -83,12 +89,12 @@ export class ProceduralProofScene {
     tree.position.set(5.15,0,6.5);
     tree.rotation.y=-0.35;
     tree.scale.setScalar(0.90);
-    this.group.add(tree);
+    this.setDressingGroup.add(tree);
 
-    const hemi=new THREE.HemisphereLight(0x9fbac8,0x101511,1.42);
+    const hemi=new THREE.HemisphereLight(0x9fbac8,0x101511,1.18);
     this.scene.add(hemi);
 
-    const moon=new THREE.DirectionalLight(0xd4e5eb,3.05);
+    const moon=new THREE.DirectionalLight(0xc8d9df,2.55);
     moon.position.set(6,11,8);
     moon.target.position.set(0,0,5);
     moon.castShadow=true;
@@ -109,6 +115,10 @@ export class ProceduralProofScene {
 
   setArchitectureVisible(flag){
     this.architectureGroup.visible=Boolean(flag);
+  }
+
+  setSetDressingVisible(flag){
+    this.setDressingGroup.visible=Boolean(flag);
   }
 
   _buildColliders(){
