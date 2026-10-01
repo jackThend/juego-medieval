@@ -5,13 +5,11 @@ let toonGradient=null;
 function getToonGradient(){
   if(toonGradient)return toonGradient;
 
-  // Four hard light bands. At the intentionally small framebuffer these form
-  // readable pixel clusters instead of smooth toon gradients.
   const levels=[
-    42,42,42,255,
-    96,96,96,255,
-    162,162,162,255,
-    236,236,236,255,
+    34,34,34,255,
+    82,82,82,255,
+    150,150,150,255,
+    226,226,226,255,
   ];
 
   const data=new Uint8Array(levels);
@@ -55,11 +53,11 @@ export function createProceduralToonMaterial({
       )
       .replace(
         "vec4 diffuseColor = vec4( diffuse, opacity );",
-        "float cell=procHash(floor(vProcWorld*vec3(3.4,2.8,3.4)));float band=floor(cell*3.0)/2.0;float variation=mix(0.86,1.06,band);vec3 procDiffuse=diffuse*variation;vec4 diffuseColor=vec4(procDiffuse,opacity);"
+        "float cell=procHash(floor(vProcWorld*vec3(3.4,2.8,3.4)));float band=floor(cell*3.0)/2.0;float variation=mix(0.84,1.05,band);vec3 procDiffuse=diffuse*variation;vec4 diffuseColor=vec4(procDiffuse,opacity);"
       );
   };
 
-  material.customProgramCacheKey=()=>"procedural-toon-v2-"+family;
+  material.customProgramCacheKey=()=>"procedural-toon-v3-"+family;
   return material;
 }
 
@@ -79,6 +77,8 @@ export function createFloorMaterial(){
     "uniform vec3 baseC;",
     "uniform vec3 mortar;",
     "uniform vec3 moss;",
+    "uniform vec3 warmStone;",
+    "uniform vec3 moonStone;",
     "varying vec3 vWorld;",
     "float hash21(vec2 p){",
     "  p=fract(p*vec2(123.34,345.45));",
@@ -106,12 +106,21 @@ export function createFloorMaterial(){
     "  float chip=step(0.90,chipSeed)*step(length(f-vec2(0.15,0.82)),0.09);",
     "  float mossSeed=hash21(cell+41.0);",
     "  float mossMask=step(0.88,mossSeed)*step(f.y,0.17)*step(f.x,0.62);",
-    "  stone=mix(stone,moss,mossMask*0.68);",
+    "  stone=mix(stone,moss,mossMask*0.65);",
     "  stone=mix(stone,mortar,mortarMask);",
-    "  stone=mix(stone,mortar,crackLine*0.78);",
-    "  stone=mix(stone,mortar,chip*0.60);",
-    "  float broad=floor((0.62+0.10*sin(vWorld.x*0.28)+0.06*cos(vWorld.z*0.22))*4.0)/4.0;",
-    "  stone*=0.86+broad*0.17;",
+    "  stone=mix(stone,mortar,crackLine*0.82);",
+    "  stone=mix(stone,mortar,chip*0.62);",
+    "  float broad=floor((0.54+0.09*sin(vWorld.x*0.28)+0.05*cos(vWorld.z*0.22))*4.0)/4.0;",
+    "  stone*=0.78+broad*0.18;",
+    "  float warm0=1.0-smoothstep(0.8,4.2,distance(vWorld.xz,vec2(-0.15,1.15)));",
+    "  float warm1=1.0-smoothstep(0.5,2.3,distance(vWorld.xz,vec2(-1.55,2.08)));",
+    "  float warm2=1.0-smoothstep(0.5,2.3,distance(vWorld.xz,vec2(1.20,2.23)));",
+    "  float warm=max(warm0*0.75,max(warm1,warm2)*0.55);",
+    "  warm=floor(warm*4.0)/4.0;",
+    "  stone=mix(stone,warmStone,warm*0.34);",
+    "  float moon=1.0-smoothstep(0.8,5.2,distance(vWorld.xz,vec2(-1.0,6.2)));",
+    "  moon=floor(moon*4.0)/4.0;",
+    "  stone=mix(stone,moonStone,moon*0.16*(1.0-warm));",
     "  gl_FragColor=vec4(stone,1.0);",
     "}",
   ].join("\n");
@@ -119,11 +128,13 @@ export function createFloorMaterial(){
   return new THREE.ShaderMaterial({
     toneMapped:false,
     uniforms:{
-      baseA:{value:new THREE.Color(0x394346)},
-      baseB:{value:new THREE.Color(0x444e4f)},
-      baseC:{value:new THREE.Color(0x505957)},
-      mortar:{value:new THREE.Color(0x20282a)},
-      moss:{value:new THREE.Color(0x33483a)},
+      baseA:{value:new THREE.Color(0x222a2c)},
+      baseB:{value:new THREE.Color(0x2e3738)},
+      baseC:{value:new THREE.Color(0x3a4442)},
+      mortar:{value:new THREE.Color(0x111719)},
+      moss:{value:new THREE.Color(0x26372d)},
+      warmStone:{value:new THREE.Color(0x72503a)},
+      moonStone:{value:new THREE.Color(0x3a4d57)},
     },
     vertexShader,
     fragmentShader,
@@ -132,7 +143,7 @@ export function createFloorMaterial(){
 
 export function createShadowMaterial(opacity=0.33){
   return new THREE.ShadowMaterial({
-    color:0x050708,
+    color:0x030506,
     opacity,
     transparent:true,
     depthWrite:false,
