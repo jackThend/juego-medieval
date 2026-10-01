@@ -4,10 +4,10 @@ import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 const shader={
   uniforms:{
     tDiffuse:{value:null},
-    resolution:{value:new THREE.Vector2(320,180)},
-    colorSteps:{value:24.0},
-    edgeThreshold:{value:0.24},
-    edgeDarken:{value:0.90},
+    resolution:{value:new THREE.Vector2(480,270)},
+    colorSteps:{value:32.0},
+    edgeThreshold:{value:0.30},
+    edgeDarken:{value:0.94},
   },
   vertexShader:/* glsl */`
     varying vec2 vUv;
@@ -35,6 +35,8 @@ const shader={
       float edge=max(max(length(c-l),length(c-r)),max(length(c-u),length(c-d)));
       vec3 q=floor(clamp(c,0.0,1.0)*colorSteps+0.5)/colorSteps;
 
+      // Sólo bordes claros. A 270p no queremos triturar molduras, ramas y
+      // pequeños highlights que ya vienen bakeados.
       if(edge>edgeThreshold){
         q*=edgeDarken;
       }
